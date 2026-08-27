@@ -32,42 +32,62 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::poisson_distribution:
-// Generates discrete variates conforming to a Poisson distribution.
-//   p(n) = (mean^n / n!) exp(-mean)
-//
-// Depending on the parameter, the distribution selects one of the following
-// algorithms:
-// * The standard algorithm, attributed to Knuth, extended using a split method
-// for larger values
-// * The "Ratio of Uniforms as a convenient method for sampling from classical
-// discrete distributions", Stadlober, 1989.
-// http://www.sciencedirect.com/science/article/pii/0377042790903495
-//
-// NOTE: param_type.mean() is a double, which permits values larger than
-// poisson_distribution<IntType>::max(), however this should be avoided and
-// the distribution results are limited to the max() value.
-//
-// The goals of this implementation are to provide good performance while still
-// being thread-safe: This limits the implementation to not using lgamma
-// provided by <math.h>.
-//
+/// A distribution that generates discrete Poisson-distributed variates.
+///
+/// Generates discrete variates conforming to a Poisson distribution.
+///   p(n) = (mean^n / n!) exp(-mean)
+///
+/// Depending on the parameter, the distribution selects one of the following
+/// algorithms:
+/// * The standard algorithm, attributed to Knuth, extended using a split method
+/// for larger values
+/// * The "Ratio of Uniforms as a convenient method for sampling from classical
+/// discrete distributions", Stadlober, 1989.
+/// http://www.sciencedirect.com/science/article/pii/0377042790903495
+///
+/// NOTE: param_type.mean() is a double, which permits values larger than
+/// poisson_distribution<IntType>::max(), however this should be avoided and
+/// the distribution results are limited to the max() value.
+///
+/// The goals of this implementation are to provide good performance while still
+/// being thread-safe: This limits the implementation to not using lgamma
+/// provided by <math.h>.
+///
 template <typename IntType = int>
 class poisson_distribution {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = IntType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = poisson_distribution;
+    /// Constructs the parameter set from the mean.
+    ///
+    /// @param mean The mean of the distribution.
     explicit param_type(double mean = 1.0);
 
+    /// Returns the mean of the distribution.
+    ///
+    /// @return The mean parameter.
     double mean() const { return mean_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.mean_ == b.mean_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -87,36 +107,79 @@ class poisson_distribution {
                   "parameterized using an integral type.");
   };
 
+  /// Constructs a distribution with a mean of 1.0.
   poisson_distribution() : poisson_distribution(1.0) {}
 
+  /// Constructs a distribution with the given mean.
+  ///
+  /// @param mean The mean of the distribution.
   explicit poisson_distribution(double mean) : param_(mean) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit poisson_distribution(const param_type& p) : param_(p) {}
 
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
-  // generating functions
+  /// Generates a random integer.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random integer distributed according to the parameter set.
   template <typename URBG>
   result_type operator()(URBG& g) {  // NOLINT(runtime/references)
     return (*this)(g, param_);
   }
 
+  /// Generates a random integer using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random integer distributed according to `p`.
   template <typename URBG>
   result_type operator()(URBG& g,  // NOLINT(runtime/references)
                          const param_type& p);
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param p The new parameter set.
   void param(const param_type& p) { param_ = p; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return `0`.
   result_type(min)() const { return 0; }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return The maximum value representable by the result type.
   result_type(max)() const { return (std::numeric_limits<result_type>::max)(); }
 
+  /// Returns the mean of the distribution.
+  ///
+  /// @return The mean parameter.
   double mean() const { return param_.mean(); }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const poisson_distribution& a,
                          const poisson_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const poisson_distribution& a,
                          const poisson_distribution& b) {
     return a.param_ != b.param_;
@@ -232,6 +295,11 @@ poisson_distribution<IntType>::operator()(
   }
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -242,6 +310,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,  // NOLINT(runtime/references)

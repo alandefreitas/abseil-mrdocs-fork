@@ -122,6 +122,13 @@ class NodeHashMapPolicy;
 //   if (result != ducks.end()) {
 //     std::cout << "Result: " << result->second << std::endl;
 //   }
+/// An unordered associative container of unique keys and associated values that
+/// provides pointer stability for its elements.
+///
+/// An `absl::node_hash_map<K, V>` is an unordered associative container which
+/// has been optimized for both speed and memory footprint in most common use
+/// cases. Its interface is similar to that of `std::unordered_map<K, V>`, and
+/// unlike `absl::flat_hash_map` it guarantees pointer stability of its elements.
 template <
     class Key, class Value,
     class Hash =
@@ -189,6 +196,7 @@ class ABSL_ATTRIBUTE_OWNER node_hash_map
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
   //   absl::node_hash_map<int, std::string> map8(std::from_range, v);
+  /// Constructs an empty `node_hash_map`.
   node_hash_map() {}
   using Base::Base;
 
@@ -571,10 +579,11 @@ class ABSL_ATTRIBUTE_OWNER node_hash_map
   using Base::key_eq;
 };
 
-// erase_if(node_hash_map<>, Pred)
-//
-// Erases all elements that satisfy the predicate `pred` from the container `c`.
-// Returns the number of erased elements.
+/// Erases all elements that satisfy the predicate `pred` from the container `c`.
+///
+/// @param c The container to erase elements from.
+/// @param pred The predicate that selects which elements to erase.
+/// @return The number of erased elements.
 template <typename K, typename V, typename H, typename E, typename A,
           typename Predicate>
 typename node_hash_map<K, V, H, E, A>::size_type erase_if(
@@ -582,15 +591,10 @@ typename node_hash_map<K, V, H, E, A>::size_type erase_if(
   return container_internal::EraseIf(pred, &c);
 }
 
-// swap(node_hash_map<>, node_hash_map<>)
-//
-// Swaps the contents of two `node_hash_map` containers.
-//
-// NOTE: we need to define this function template in order for
-// `flat_hash_set::swap` to be called instead of `std::swap`. Even though we
-// have `swap(raw_hash_set&, raw_hash_set&)` defined, that function requires a
-// derived-to-base conversion, whereas `std::swap` is a function template so
-// `std::swap` will be preferred by compiler.
+/// Swaps the contents of two `node_hash_map` containers.
+///
+/// @param x The first container to swap.
+/// @param y The second container to swap.
 template <typename K, typename V, typename H, typename E, typename A>
 void swap(node_hash_map<K, V, H, E, A>& x,
           node_hash_map<K, V, H, E, A>& y) noexcept(noexcept(x.swap(y))) {

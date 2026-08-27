@@ -30,16 +30,25 @@
 
 #include "absl/base/config.h"
 
+// Abseil, an open-source collection of C++ library code.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-//------------------------------------------------------------------------------
-// SeedGenException
-//------------------------------------------------------------------------------
+/// An exception thrown when suitable seed-material cannot be derived.
+///
+/// This exception may be thrown if unpredictable events prevent the derivation
+/// of suitable seed-material for constructing a bit generator conforming to
+/// [rand.req.urng] (e.g. entropy cannot be read from `/dev/urandom` on a
+/// Unix-based system).
 class SeedGenException : public std::exception {
  public:
+  /// Constructs the exception.
   SeedGenException() = default;
+  /// Destroys the exception.
   ~SeedGenException() override;
+  /// Returns an explanatory string.
+  ///
+  /// @return A null-terminated character sequence describing the error.
   const char* what() const noexcept override;
 };
 

@@ -32,29 +32,35 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::beta_distribution:
-// Generate a floating-point variate conforming to a Beta distribution:
-//   pdf(x) \propto x^(alpha-1) * (1-x)^(beta-1),
-// where the params alpha and beta are both strictly positive real values.
-//
-// The support is the open interval (0, 1), but the return value might be equal
-// to 0 or 1, due to numerical errors when alpha and beta are very different.
-//
-// Usage note: One usage is that alpha and beta are counts of number of
-// successes and failures. When the total number of trials are large, consider
-// approximating a beta distribution with a Gaussian distribution with the same
-// mean and variance. One could use the skewness, which depends only on the
-// smaller of alpha and beta when the number of trials are sufficiently large,
-// to quantify how far a beta distribution is from the normal distribution.
+/// Generates a floating-point variate conforming to a Beta distribution:
+///   pdf(x) \propto x^(alpha-1) * (1-x)^(beta-1),
+/// where the params alpha and beta are both strictly positive real values.
+///
+/// The support is the open interval (0, 1), but the return value might be equal
+/// to 0 or 1, due to numerical errors when alpha and beta are very different.
+///
+/// Usage note: One usage is that alpha and beta are counts of number of
+/// successes and failures. When the total number of trials are large, consider
+/// approximating a beta distribution with a Gaussian distribution with the same
+/// mean and variance. One could use the skewness, which depends only on the
+/// smaller of alpha and beta when the number of trials are sufficiently large,
+/// to quantify how far a beta distribution is from the normal distribution.
 template <typename RealType = double>
 class beta_distribution {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = RealType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = beta_distribution;
 
+    /// Constructs the parameter set from the shape parameters.
+    ///
+    /// @param alpha The first shape parameter.
+    /// @param beta The second shape parameter.
     explicit param_type(result_type alpha, result_type beta)
         : alpha_(alpha), beta_(beta) {
       assert(alpha >= 0);
@@ -118,13 +124,29 @@ class beta_distribution {
       gamma_ = a_ + result_type(1) / y_;
     }
 
+    /// Returns the first shape parameter.
+    ///
+    /// @return The first shape parameter.
     result_type alpha() const { return alpha_; }
+    /// Returns the second shape parameter.
+    ///
+    /// @return The second shape parameter.
     result_type beta() const { return beta_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.alpha_ == b.alpha_ && a.beta_ == b.beta_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -200,38 +222,85 @@ class beta_distribution {
                   "parameterized using a floating-point type.");
   };
 
+  /// Constructs a distribution with shape parameters (1, 1).
   beta_distribution() : beta_distribution(1) {}
 
+  /// Constructs a distribution with the given shape parameters.
+  ///
+  /// @param alpha The first shape parameter.
+  /// @param beta The second shape parameter.
   explicit beta_distribution(result_type alpha, result_type beta = 1)
       : param_(alpha, beta) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit beta_distribution(const param_type& p) : param_(p) {}
 
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
-  // Generating functions
+  /// Generates a random value.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random value drawn from the distribution.
   template <typename URBG>
   result_type operator()(URBG& g) {  // NOLINT(runtime/references)
     return (*this)(g, param_);
   }
 
+  /// Generates a random value using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random value drawn from the distribution.
   template <typename URBG>
   result_type operator()(URBG& g,  // NOLINT(runtime/references)
                          const param_type& p);
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param p The new parameter set.
   void param(const param_type& p) { param_ = p; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return `0`.
   result_type(min)() const { return 0; }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return `1`.
   result_type(max)() const { return 1; }
 
+  /// Returns the first shape parameter.
+  ///
+  /// @return The first shape parameter.
   result_type alpha() const { return param_.alpha(); }
+  /// Returns the second shape parameter.
+  ///
+  /// @return The second shape parameter.
   result_type beta() const { return param_.beta(); }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const beta_distribution& a,
                          const beta_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const beta_distribution& a,
                          const beta_distribution& b) {
     return a.param_ != b.param_;
@@ -393,6 +462,11 @@ beta_distribution<RealType>::operator()(URBG& g,  // NOLINT(runtime/references)
   }
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -403,6 +477,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,  // NOLINT(runtime/references)

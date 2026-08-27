@@ -30,26 +30,34 @@
 #include "absl/base/config.h"
 #include "absl/base/nullability.h"
 
+// The Abseil library namespace.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// An alias for `std::string_view`.
 using std::string_view;
 
-// ClippedSubstr()
-//
-// Like `s.substr(pos, n)`, but clips `pos` to an upper bound of `s.size()`.
-// Provided because std::string_view::substr throws if `pos > size()`
+/// Like `s.substr(pos, n)`, but clips `pos` to an upper bound of `s.size()`.
+///
+/// Provided because std::string_view::substr throws if `pos > size()`.
+///
+/// @param s The string view to take a substring of.
+/// @param pos The starting position, clipped to `s.size()`.
+/// @param n The number of characters to include in the substring.
+/// @return A view of the clipped substring.
 inline string_view ClippedSubstr(string_view s ABSL_ATTRIBUTE_LIFETIME_BOUND,
                                  size_t pos, size_t n = string_view::npos) {
   pos = (std::min)(pos, static_cast<size_t>(s.size()));
   return s.substr(pos, n);
 }
 
-// NullSafeStringView()
-//
-// Creates an `absl::string_view` from a pointer `p` even if it's null-valued.
-// This function should be used where an `absl::string_view` can be created from
-// a possibly-null pointer.
+/// Creates an `absl::string_view` from a pointer `p` even if it's null-valued.
+///
+/// This function should be used where an `absl::string_view` can be created
+/// from a possibly-null pointer.
+///
+/// @param p The possibly-null pointer to create a view from.
+/// @return A view of `p`, or an empty view if `p` is null.
 constexpr string_view NullSafeStringView(const char* absl_nullable p) {
   return p ? string_view(p) : string_view();
 }

@@ -59,31 +59,31 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// FunctionRef
-//
-// Dummy class declaration to allow the partial specialization based on function
-// types below.
+/// FunctionRef
+///
+/// Dummy class declaration to allow the partial specialization based on function
+/// types below.
 template <typename T>
 class FunctionRef;
 
-// FunctionRef
-//
-// An `absl::FunctionRef` is a lightweight wrapper to any invocable object with
-// a compatible signature. Generally, an `absl::FunctionRef` should only be used
-// as an argument type and should be preferred as an argument over a const
-// reference to a `std::function`. `absl::FunctionRef` itself does not allocate,
-// although the wrapped invocable may.
-//
-// Example:
-//
-//   // The following function takes a function callback by const reference
-//   bool Visitor(const std::function<void(my_proto&,
-//                                         absl::string_view)>& callback);
-//
-//   // Assuming that the function is not stored or otherwise copied, it can be
-//   // replaced by an `absl::FunctionRef`:
-//   bool Visitor(absl::FunctionRef<void(my_proto&, absl::string_view)>
-//                  callback);
+/// FunctionRef
+///
+/// An `absl::FunctionRef` is a lightweight wrapper to any invocable object with
+/// a compatible signature. Generally, an `absl::FunctionRef` should only be used
+/// as an argument type and should be preferred as an argument over a const
+/// reference to a `std::function`. `absl::FunctionRef` itself does not allocate,
+/// although the wrapped invocable may.
+///
+/// Example:
+///
+///   // The following function takes a function callback by const reference
+///   bool Visitor(const std::function<void(my_proto&,
+///                                         absl::string_view)>& callback);
+///
+///   // Assuming that the function is not stored or otherwise copied, it can be
+///   // replaced by an `absl::FunctionRef`:
+///   bool Visitor(absl::FunctionRef<void(my_proto&, absl::string_view)>
+///                  callback);
 template <typename R, typename... Args>
 class ABSL_ATTRIBUTE_VIEW FunctionRef<R(Args...)> {
  protected:
@@ -170,8 +170,8 @@ class ABSL_ATTRIBUTE_VIEW FunctionRef<R(Args...)> {
   absl::functional_internal::Invoker<R, Args...> invoker_;
 };
 
-// Allow const qualified function signatures. Since FunctionRef requires
-// constness anyway we can just make this a no-op.
+/// Allow const qualified function signatures. Since FunctionRef requires
+/// constness anyway we can just make this a no-op.
 template <typename R, typename... Args>
 class ABSL_ATTRIBUTE_VIEW
     FunctionRef<R(Args...) const> : private FunctionRef<R(Args...)> {
@@ -223,22 +223,28 @@ class ABSL_ATTRIBUTE_VIEW
   using Base::operator();
 };
 
+/// Deduces a `FunctionRef` wrapping a function pointer.
 template <class F>
 FunctionRef(F*) -> FunctionRef<F>;
 
 #if ABSL_INTERNAL_CPLUSPLUS_LANG >= 202002L
+/// Deduces a `FunctionRef` wrapping a compile-time known free function.
 template <auto Func>
 FunctionRef(nontype_t<Func>)
     -> FunctionRef<std::remove_pointer_t<decltype(Func)>>;
 
+/// Deduces a `FunctionRef` wrapping a compile-time known member pointer.
 template <class M, class T, M T::* Func, class U>
 FunctionRef(nontype_t<Func>, U&&)
     -> FunctionRef<std::enable_if_t<std::is_member_pointer_v<M T::*>, M>>;
 
+/// Deduces a `FunctionRef` wrapping a compile-time known member function.
 template <class M, class T, M T::* Func, class U>
 FunctionRef(nontype_t<Func>, U&&) -> FunctionRef<std::enable_if_t<
     std::is_object_v<M>, std::invoke_result_t<decltype(Func), U&>()>>;
 
+/// Deduces a `FunctionRef` wrapping a compile-time known free function bound
+/// to an object argument.
 template <class R, class T, class... Args, R (*Func)(T, Args...), class U>
 FunctionRef(nontype_t<Func>, U&&) -> FunctionRef<R(Args...)>;
 #endif

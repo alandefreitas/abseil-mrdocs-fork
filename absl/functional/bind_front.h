@@ -46,144 +46,150 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// bind_front()
-//
-// Binds the first N arguments of an invocable object and stores them by value.
-//
-// Like `std::bind()`, `absl::bind_front()` is implicitly convertible to
-// `std::function`.  In particular, it may be used as a simpler replacement for
-// `std::bind()` in most cases, as it does not require placeholders to be
-// specified. More importantly, it provides more reliable correctness guarantees
-// than `std::bind()`; while `std::bind()` will silently ignore passing more
-// parameters than expected, for example, `absl::bind_front()` will report such
-// mis-uses as errors. In C++20, `absl::bind_front` is replaced by
-// `std::bind_front`.
-//
-// absl::bind_front(a...) can be seen as storing the results of
-// std::make_tuple(a...).
-//
-// Example: Binding a free function.
-//
-//   int Minus(int a, int b) { return a - b; }
-//
-//   assert(absl::bind_front(Minus)(3, 2) == 3 - 2);
-//   assert(absl::bind_front(Minus, 3)(2) == 3 - 2);
-//   assert(absl::bind_front(Minus, 3, 2)() == 3 - 2);
-//
-// Example: Binding a member function.
-//
-//   struct Math {
-//     int Double(int a) const { return 2 * a; }
-//   };
-//
-//   Math math;
-//
-//   assert(absl::bind_front(&Math::Double)(&math, 3) == 2 * 3);
-//   // Stores a pointer to math inside the functor.
-//   assert(absl::bind_front(&Math::Double, &math)(3) == 2 * 3);
-//   // Stores a copy of math inside the functor.
-//   assert(absl::bind_front(&Math::Double, math)(3) == 2 * 3);
-//   // Stores std::unique_ptr<Math> inside the functor.
-//   assert(absl::bind_front(&Math::Double,
-//                           std::unique_ptr<Math>(new Math))(3) == 2 * 3);
-//
-// Example: Using `absl::bind_front()`, instead of `std::bind()`, with
-//          `std::function`.
-//
-//   class FileReader {
-//    public:
-//     void ReadFileAsync(const std::string& filename, std::string* content,
-//                        const std::function<void()>& done) {
-//       // Calls Executor::Schedule(std::function<void()>).
-//       Executor::DefaultExecutor()->Schedule(
-//           absl::bind_front(&FileReader::BlockingRead, this,
-//                            filename, content, done));
-//     }
-//
-//    private:
-//     void BlockingRead(const std::string& filename, std::string* content,
-//                       const std::function<void()>& done) {
-//       CHECK_OK(file::GetContents(filename, content, {}));
-//       done();
-//     }
-//   };
-//
-// `absl::bind_front()` stores bound arguments explicitly using the type passed
-// rather than implicitly based on the type accepted by its functor.
-//
-// Example: Binding arguments explicitly.
-//
-//   void LogStringView(absl::string_view sv) {
-//     LOG(INFO) << sv;
-//   }
-//
-//   Executor* e = Executor::DefaultExecutor();
-//   std::string s = "hello";
-//   absl::string_view sv = s;
-//
-//   // absl::bind_front(LogStringView, arg) makes a copy of arg and stores it.
-//   e->Schedule(absl::bind_front(LogStringView, sv)); // ERROR: dangling
-//                                                     // string_view.
-//
-//   e->Schedule(absl::bind_front(LogStringView, s));  // OK: stores a copy of
-//                                                     // s.
-//
-// To store some of the arguments passed to `absl::bind_front()` by reference,
-//  use std::ref()` and `std::cref()`.
-//
-// Example: Storing some of the bound arguments by reference.
-//
-//   class Service {
-//    public:
-//     void Serve(const Request& req, std::function<void()>* done) {
-//       // The request protocol buffer won't be deleted until done is called.
-//       // It's safe to store a reference to it inside the functor.
-//       Executor::DefaultExecutor()->Schedule(
-//           absl::bind_front(&Service::BlockingServe, this, std::cref(req),
-//           done));
-//     }
-//
-//    private:
-//     void BlockingServe(const Request& req, std::function<void()>* done);
-//   };
-//
-// Example: Storing bound arguments by reference.
-//
-//   void Print(const std::string& a, const std::string& b) {
-//     std::cerr << a << b;
-//   }
-//
-//   std::string hi = "Hello, ";
-//   std::vector<std::string> names = {"Chuk", "Gek"};
-//   // Doesn't copy hi.
-//   for_each(names.begin(), names.end(),
-//            absl::bind_front(Print, std::ref(hi)));
-//
-//   // DO NOT DO THIS: the functor may outlive "hi", resulting in
-//   // dangling references.
-//   foo->DoInFuture(absl::bind_front(Print, std::ref(hi), "Guest"));  // BAD!
-//   auto f = absl::bind_front(Print, std::ref(hi), "Guest"); // BAD!
-//
-// Example: Storing reference-like types.
-//
-//   void Print(absl::string_view a, const std::string& b) {
-//     std::cerr << a << b;
-//   }
-//
-//   std::string hi = "Hello, ";
-//   // Copies "hi".
-//   absl::bind_front(Print, hi)("Chuk");
-//
-//   // Compile error: std::reference_wrapper<const string> is not implicitly
-//   // convertible to string_view.
-//   // absl::bind_front(Print, std::cref(hi))("Chuk");
-//
-//   // Doesn't copy "hi".
-//   absl::bind_front(Print, absl::string_view(hi))("Chuk");
-//
+/// bind_front()
+///
+/// Binds the first N arguments of an invocable object and stores them by value.
+///
+/// Like `std::bind()`, `absl::bind_front()` is implicitly convertible to
+/// `std::function`.  In particular, it may be used as a simpler replacement for
+/// `std::bind()` in most cases, as it does not require placeholders to be
+/// specified. More importantly, it provides more reliable correctness guarantees
+/// than `std::bind()`; while `std::bind()` will silently ignore passing more
+/// parameters than expected, for example, `absl::bind_front()` will report such
+/// mis-uses as errors. In C++20, `absl::bind_front` is replaced by
+/// `std::bind_front`.
+///
+/// absl::bind_front(a...) can be seen as storing the results of
+/// std::make_tuple(a...).
+///
+/// Example: Binding a free function.
+///
+///   int Minus(int a, int b) { return a - b; }
+///
+///   assert(absl::bind_front(Minus)(3, 2) == 3 - 2);
+///   assert(absl::bind_front(Minus, 3)(2) == 3 - 2);
+///   assert(absl::bind_front(Minus, 3, 2)() == 3 - 2);
+///
+/// Example: Binding a member function.
+///
+///   struct Math {
+///     int Double(int a) const { return 2 * a; }
+///   };
+///
+///   Math math;
+///
+///   assert(absl::bind_front(&Math::Double)(&math, 3) == 2 * 3);
+///   // Stores a pointer to math inside the functor.
+///   assert(absl::bind_front(&Math::Double, &math)(3) == 2 * 3);
+///   // Stores a copy of math inside the functor.
+///   assert(absl::bind_front(&Math::Double, math)(3) == 2 * 3);
+///   // Stores std::unique_ptr<Math> inside the functor.
+///   assert(absl::bind_front(&Math::Double,
+///                           std::unique_ptr<Math>(new Math))(3) == 2 * 3);
+///
+/// Example: Using `absl::bind_front()`, instead of `std::bind()`, with
+///          `std::function`.
+///
+///   class FileReader {
+///    public:
+///     void ReadFileAsync(const std::string& filename, std::string* content,
+///                        const std::function<void()>& done) {
+///       // Calls Executor::Schedule(std::function<void()>).
+///       Executor::DefaultExecutor()->Schedule(
+///           absl::bind_front(&FileReader::BlockingRead, this,
+///                            filename, content, done));
+///     }
+///
+///    private:
+///     void BlockingRead(const std::string& filename, std::string* content,
+///                       const std::function<void()>& done) {
+///       CHECK_OK(file::GetContents(filename, content, {}));
+///       done();
+///     }
+///   };
+///
+/// `absl::bind_front()` stores bound arguments explicitly using the type passed
+/// rather than implicitly based on the type accepted by its functor.
+///
+/// Example: Binding arguments explicitly.
+///
+///   void LogStringView(absl::string_view sv) {
+///     LOG(INFO) << sv;
+///   }
+///
+///   Executor* e = Executor::DefaultExecutor();
+///   std::string s = "hello";
+///   absl::string_view sv = s;
+///
+///   // absl::bind_front(LogStringView, arg) makes a copy of arg and stores it.
+///   e->Schedule(absl::bind_front(LogStringView, sv)); // ERROR: dangling
+///                                                     // string_view.
+///
+///   e->Schedule(absl::bind_front(LogStringView, s));  // OK: stores a copy of
+///                                                     // s.
+///
+/// To store some of the arguments passed to `absl::bind_front()` by reference,
+///  use std::ref()` and `std::cref()`.
+///
+/// Example: Storing some of the bound arguments by reference.
+///
+///   class Service {
+///    public:
+///     void Serve(const Request& req, std::function<void()>* done) {
+///       // The request protocol buffer won't be deleted until done is called.
+///       // It's safe to store a reference to it inside the functor.
+///       Executor::DefaultExecutor()->Schedule(
+///           absl::bind_front(&Service::BlockingServe, this, std::cref(req),
+///           done));
+///     }
+///
+///    private:
+///     void BlockingServe(const Request& req, std::function<void()>* done);
+///   };
+///
+/// Example: Storing bound arguments by reference.
+///
+///   void Print(const std::string& a, const std::string& b) {
+///     std::cerr << a << b;
+///   }
+///
+///   std::string hi = "Hello, ";
+///   std::vector<std::string> names = {"Chuk", "Gek"};
+///   // Doesn't copy hi.
+///   for_each(names.begin(), names.end(),
+///            absl::bind_front(Print, std::ref(hi)));
+///
+///   // DO NOT DO THIS: the functor may outlive "hi", resulting in
+///   // dangling references.
+///   foo->DoInFuture(absl::bind_front(Print, std::ref(hi), "Guest"));  // BAD!
+///   auto f = absl::bind_front(Print, std::ref(hi), "Guest"); // BAD!
+///
+/// Example: Storing reference-like types.
+///
+///   void Print(absl::string_view a, const std::string& b) {
+///     std::cerr << a << b;
+///   }
+///
+///   std::string hi = "Hello, ";
+///   // Copies "hi".
+///   absl::bind_front(Print, hi)("Chuk");
+///
+///   // Compile error: std::reference_wrapper<const string> is not implicitly
+///   // convertible to string_view.
+///   // absl::bind_front(Print, std::cref(hi))("Chuk");
+///
+///   // Doesn't copy "hi".
+///   absl::bind_front(Print, absl::string_view(hi))("Chuk");
+///
 #if defined(__cpp_lib_bind_front) && __cpp_lib_bind_front >= 201907L
+/// Binds the first N arguments of an invocable object and stores them by value.
 using std::bind_front;
 #else   // defined(__cpp_lib_bind_front) && __cpp_lib_bind_front >= 201907L
+/// Binds the first N arguments of an invocable object and stores them by value.
+///
+/// @param func The invocable object to bind arguments to.
+/// @param args The arguments to bind to the front of `func`.
+/// @return A functor that invokes `func` with `args` prepended.
 template <class F, class... BoundArgs>
 constexpr functional_internal::bind_front_t<F, BoundArgs...> bind_front(
     F&& func, BoundArgs&&... args) {

@@ -37,22 +37,38 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// Alias for `std::any` (deprecated; use `std::any` directly).
 using any ABSL_DEPRECATE_AND_INLINE() = std::any;
 
+/// Casts the value stored in an `any` object to type `T` (deprecated).
+///
+/// @param args Arguments forwarded to `std::any_cast`.
+/// @return The result of `std::any_cast<T>`.
 template <typename T, typename... Args>
 [[deprecated]] constexpr decltype(std::any_cast<T>(std::declval<Args>()...))
 any_cast(Args&&... args) {
   return std::any_cast<T>(std::forward<Args>(args)...);
 }
 
+/// Alias for `std::bad_any_cast` (deprecated; use `std::bad_any_cast`).
 using bad_any_cast ABSL_DEPRECATE_AND_INLINE() = std::bad_any_cast;
 
+/// Constructs an `any` object holding a value of type `T` (deprecated).
+///
+/// @param args Arguments forwarded to `std::make_any`.
+/// @return An `any` holding the constructed value.
 template <typename T, typename... Args>
 [[deprecated]] constexpr decltype(std::make_any<T>(std::declval<Args>()...))
 make_any(Args&&... args) {
   return std::make_any<T>(std::forward<Args>(args)...);
 }
 
+/// Constructs an `any` object holding a `T` from an initializer list
+/// (deprecated).
+///
+/// @param il Initializer list forwarded to `std::make_any`.
+/// @param args Additional arguments forwarded to `std::make_any`.
+/// @return An `any` holding the constructed value.
 template <typename T, typename U, typename... Args>
 [[deprecated]] constexpr decltype(std::make_any<T>(
     std::declval<std::initializer_list<U>>(), std::declval<Args>()...))

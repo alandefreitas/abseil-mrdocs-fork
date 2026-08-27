@@ -33,21 +33,35 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// Alias for `std::bad_optional_access`.
 using bad_optional_access ABSL_REFACTOR_INLINE
     = std::bad_optional_access;
 
+/// Creates an `optional` holding a copy of the given value.
+///
+/// @param value The value to store in the returned optional.
+/// @return An optional holding the forwarded value.
 template <typename T>
 ABSL_REFACTOR_INLINE constexpr decltype(std::make_optional(
     std::declval<T>())) make_optional(T&& value) {
   return std::make_optional(std::forward<T>(value));
 }
 
+/// Creates an `optional<T>` by constructing `T` in place.
+///
+/// @param args Arguments forwarded to the constructor of `T`.
+/// @return An optional holding the constructed value.
 template <typename T, typename... Args>
 constexpr decltype(std::make_optional<T>(
     std::declval<Args>()...)) make_optional(Args&&... args) {
   return std::make_optional<T>(std::forward<Args>(args)...);
 }
 
+/// Creates an `optional<T>` from an initializer list and extra arguments.
+///
+/// @param il Initializer list forwarded to the constructor of `T`.
+/// @param args Additional arguments forwarded to the constructor of `T`.
+/// @return An optional holding the constructed value.
 template <typename T, typename U, typename... Args>
 constexpr decltype(std::make_optional<T>(
     std::declval<std::initializer_list<U>>(),
@@ -56,11 +70,14 @@ constexpr decltype(std::make_optional<T>(
   return std::make_optional<T>(il, std::forward<Args>(args)...);
 }
 
+/// Alias for `std::nullopt`, the disengaged-optional constant.
 using std::nullopt ABSL_REFACTOR_INLINE;
 
+/// Alias for `std::nullopt_t`, the type of `nullopt`.
 using nullopt_t ABSL_REFACTOR_INLINE
     = std::nullopt_t;
 
+/// Alias for `std::optional`.
 using std::optional ABSL_REFACTOR_INLINE;
 
 ABSL_NAMESPACE_END

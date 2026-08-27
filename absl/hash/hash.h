@@ -90,6 +90,10 @@
 #include "absl/hash/internal/weakly_mixed_integer.h"
 #include "absl/meta/type_traits.h"
 
+// Abseil's root namespace.
+//
+// Contains the Abseil hashing framework, including the `Hash` functor and the
+// type-erased `HashState`.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
@@ -252,81 +256,91 @@ ABSL_NAMESPACE_BEGIN
 // Note: unlike `std::hash', `absl::Hash` should never be specialized. It must
 // only be extended by adding `AbslHashValue()` overloads.
 //
+/// A convenient general-purpose hash functor for any hashable type `T`.
+///
+/// `absl::Hash<T>` supports arithmetic and pointer types, types that define an
+/// `AbslHashValue()` overload, and types with a `std::hash<T>` specialization.
 template <typename T>
 using Hash = absl::hash_internal::Hash<T>;
 
-// HashOf
-//
-// absl::HashOf() is a helper that generates a hash from the values of its
-// arguments.  It dispatches to absl::Hash directly, as follows:
-//  * HashOf(t) == absl::Hash<T>{}(t)
-//  * HashOf(a, b, c) == HashOf(std::make_tuple(a, b, c))
-//
-// HashOf(a1, a2, ...) == HashOf(b1, b2, ...) is guaranteed when
-//  * The argument lists have pairwise identical C++ types
-//  * a1 == b1 && a2 == b2 && ...
-//
-// The requirement that the arguments match in both type and value is critical.
-// It means that `a == b` does not necessarily imply `HashOf(a) == HashOf(b)` if
-// `a` and `b` have different types. For example, `HashOf(2) != HashOf(2.0)`.
+/// Generate a hash from the values of its arguments.
+///
+/// absl::HashOf() is a helper that generates a hash from the values of its
+/// arguments.  It dispatches to absl::Hash directly, as follows:
+///  * HashOf(t) == absl::Hash<T>{}(t)
+///  * HashOf(a, b, c) == HashOf(std::make_tuple(a, b, c))
+///
+/// HashOf(a1, a2, ...) == HashOf(b1, b2, ...) is guaranteed when
+///  * The argument lists have pairwise identical C++ types
+///  * a1 == b1 && a2 == b2 && ...
+///
+/// The requirement that the arguments match in both type and value is critical.
+/// It means that `a == b` does not necessarily imply `HashOf(a) == HashOf(b)` if
+/// `a` and `b` have different types. For example, `HashOf(2) != HashOf(2.0)`.
+///
+/// @param values The values to hash together.
+/// @return The combined hash of the arguments.
 template <int&... ExplicitArgumentBarrier, typename... Types>
 size_t HashOf(const Types&... values) {
   auto tuple = std::tie(values...);
   return absl::Hash<decltype(tuple)>{}(tuple);
 }
 
-// HashState
-//
-// A type erased version of the hash state concept, for use in user-defined
-// `AbslHashValue` implementations that can't use templates (such as PImpl
-// classes, virtual functions, etc.). The type erasure adds overhead so it
-// should be avoided unless necessary.
-//
-// Note: This wrapper will only erase calls to
-//     combine_contiguous(H, const unsigned char*, size_t)
-//     RunCombineUnordered(H, CombinerF)
-//
-// All other calls will be handled internally and will not invoke overloads
-// provided by the wrapped class.
-//
-// Users of this class should still define a template `AbslHashValue` function,
-// but can use `absl::HashState::Create(&state)` to erase the type of the hash
-// state and dispatch to their private hashing logic.
-//
-// This state can be used like any other hash state. In particular, you can call
-// `HashState::combine()` and `HashState::combine_contiguous()` on it.
-//
-// Example:
-//
-//   class Interface {
-//    public:
-//     template <typename H>
-//     friend H AbslHashValue(H state, const Interface& value) {
-//       state = H::combine(std::move(state), std::type_index(typeid(*this)));
-//       value.HashValue(absl::HashState::Create(&state));
-//       return state;
-//     }
-//    private:
-//     virtual void HashValue(absl::HashState state) const = 0;
-//   };
-//
-//   class Impl : Interface {
-//    private:
-//     void HashValue(absl::HashState state) const override {
-//       absl::HashState::combine(std::move(state), v1_, v2_);
-//     }
-//     int v1_;
-//     std::string v2_;
-//   };
+/// A type-erased version of the hash state concept.
+///
+/// A type erased version of the hash state concept, for use in user-defined
+/// `AbslHashValue` implementations that can't use templates (such as PImpl
+/// classes, virtual functions, etc.). The type erasure adds overhead so it
+/// should be avoided unless necessary.
+///
+/// Note: This wrapper will only erase calls to
+///     combine_contiguous(H, const unsigned char*, size_t)
+///     RunCombineUnordered(H, CombinerF)
+///
+/// All other calls will be handled internally and will not invoke overloads
+/// provided by the wrapped class.
+///
+/// Users of this class should still define a template `AbslHashValue` function,
+/// but can use `absl::HashState::Create(&state)` to erase the type of the hash
+/// state and dispatch to their private hashing logic.
+///
+/// This state can be used like any other hash state. In particular, you can call
+/// `HashState::combine()` and `HashState::combine_contiguous()` on it.
+///
+/// Example:
+///
+///   class Interface {
+///    public:
+///     template <typename H>
+///     friend H AbslHashValue(H state, const Interface& value) {
+///       state = H::combine(std::move(state), std::type_index(typeid(*this)));
+///       value.HashValue(absl::HashState::Create(&state));
+///       return state;
+///     }
+///    private:
+///     virtual void HashValue(absl::HashState state) const = 0;
+///   };
+///
+///   class Impl : Interface {
+///    private:
+///     void HashValue(absl::HashState state) const override {
+///       absl::HashState::combine(std::move(state), v1_, v2_);
+///     }
+///     int v1_;
+///     std::string v2_;
+///   };
 class HashState : public hash_internal::HashStateBase<HashState> {
  public:
-  // HashState::Create()
-  //
-  // Create a new `HashState` instance that wraps `state`. All calls to
-  // `combine()` and `combine_contiguous()` on the new instance will be
-  // redirected to the original `state` object. The `state` object must outlive
-  // the `HashState` instance. `T` must be a subclass of `HashStateBase<T>` -
-  // users should not define their own HashState types.
+  /// Create a new `HashState` instance that wraps `state`.
+  ///
+  /// All calls to
+  /// `combine()` and `combine_contiguous()` on the new instance will be
+  /// redirected to the original `state` object. The `state` object must outlive
+  /// the `HashState` instance. `T` must be a subclass of `HashStateBase<T>` -
+  /// users should not define their own HashState types.
+  ///
+  /// @param state The underlying hash state to wrap.
+  /// @return A type-erased `HashState` wrapping `state`.
   template <typename T,
             std::enable_if_t<
                 std::is_base_of_v<hash_internal::HashStateBase<T>, T>, int> = 0>
@@ -336,32 +350,56 @@ class HashState : public hash_internal::HashStateBase<HashState> {
     return s;
   }
 
-  HashState(const HashState&) = delete;
-  HashState& operator=(const HashState&) = delete;
-  HashState(HashState&&) = default;
-  HashState& operator=(HashState&&) = default;
+  /// Copy construction is disabled; `HashState` is move-only.
+  HashState(const HashState& other) = delete;
 
-  // HashState::combine()
-  //
-  // Combines an arbitrary number of values into a hash state, returning the
-  // updated state.
+  /// Copy assignment is disabled; `HashState` is move-only.
+  ///
+  /// @return A reference to this object.
+  HashState& operator=(const HashState& other) = delete;
+
+  /// Move-construct a `HashState`.
+  /// @param other The source object.
+  HashState(HashState&& other) = default;
+
+  /// Move-assign a `HashState`.
+  ///
+  /// @param other The source object.
+  /// @return A reference to this object.
+  HashState& operator=(HashState&& other) = default;
+
+  /// Combine an arbitrary number of values into a hash state.
+  ///
+  /// Combines an arbitrary number of values into a hash state, returning the
+  /// updated state.
   using HashState::HashStateBase::combine;
 
-  // HashState::combine_contiguous()
-  //
-  // Combines a contiguous array of `size` elements into a hash state, returning
-  // the updated state.
+  /// Combine a contiguous array of elements into a hash state.
+  ///
+  /// Combines a contiguous array of `size` elements into a hash state, returning
+  /// the updated state.
+  ///
+  /// @param hash_state The hash state to update.
+  /// @param first A pointer to the first byte of the array.
+  /// @param size The number of bytes in the array.
+  /// @return The updated hash state.
   static HashState combine_contiguous(HashState hash_state,
                                       const unsigned char* first, size_t size) {
     hash_state.combine_contiguous_(hash_state.state_, first, size);
     return hash_state;
   }
 
+  /// Combine a weakly-mixed integer into a hash state.
+  ///
+  /// @param hash_state The hash state to update.
+  /// @param value The weakly-mixed integer to combine.
+  /// @return The updated hash state.
   static HashState combine_weakly_mixed_integer(
       HashState hash_state, hash_internal::WeaklyMixedInteger value) {
     hash_state.combine_weakly_mixed_integer_(hash_state.state_, value);
     return hash_state;
   }
+  /// Combine a contiguous range of elements into a hash state.
   using HashState::HashStateBase::combine_contiguous;
 
  private:

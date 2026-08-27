@@ -98,21 +98,20 @@ using map_params = typename ApplyWithoutDefaultSuffix<
 
 }  // namespace container_internal
 
-// absl::btree_map<>
-//
-// An `absl::btree_map<K, V>` is an ordered associative container of
-// unique keys and associated values designed to be a more efficient replacement
-// for `std::map` (in most cases).
-//
-// Keys are sorted using an (optional) comparison function, which defaults to
-// `std::less<K>`.
-//
-// An `absl::btree_map<K, V>` uses a default allocator of
-// `std::allocator<std::pair<const K, V>>` to allocate (and deallocate)
-// nodes, and construct and destruct values within those nodes. You may
-// instead specify a custom allocator `A` (which in turn requires specifying a
-// custom comparator `C`) as in `absl::btree_map<K, V, C, A>`.
-//
+/// An ordered associative container of unique keys and associated values.
+///
+/// An `absl::btree_map<K, V>` is an ordered associative container of
+/// unique keys and associated values designed to be a more efficient replacement
+/// for `std::map` (in most cases).
+///
+/// Keys are sorted using an (optional) comparison function, which defaults to
+/// `std::less<K>`.
+///
+/// An `absl::btree_map<K, V>` uses a default allocator of
+/// `std::allocator<std::pair<const K, V>>` to allocate (and deallocate)
+/// nodes, and construct and destruct values within those nodes. You may
+/// instead specify a custom allocator `A` (which in turn requires specifying a
+/// custom comparator `C`) as in `absl::btree_map<K, V, C, A>`.
 template <typename Key, typename Value, typename Compare = std::less<Key>,
           typename Alloc = std::allocator<std::pair<const Key, Value>>>
 class ABSL_ATTRIBUTE_OWNER btree_map
@@ -161,6 +160,7 @@ class ABSL_ATTRIBUTE_OWNER btree_map
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
   //   absl::btree_map<int, std::string> map7(v.begin(), v.end());
+  /// Constructs an empty `btree_map`.
   btree_map() {}
   using Base::Base;
 
@@ -512,40 +512,42 @@ class ABSL_ATTRIBUTE_OWNER btree_map
   using Base::value_comp;
 };
 
-// absl::swap(absl::btree_map<>, absl::btree_map<>)
-//
-// Swaps the contents of two `absl::btree_map` containers.
+/// Swaps the contents of two `absl::btree_map` containers.
+///
+/// @param x The first container to swap.
+/// @param y The second container to swap.
 template <typename K, typename V, typename C, typename A>
 void swap(btree_map<K, V, C, A> &x, btree_map<K, V, C, A> &y) {
   return x.swap(y);
 }
 
-// absl::erase_if(absl::btree_map<>, Pred)
-//
-// Erases all elements that satisfy the predicate pred from the container.
-// Returns the number of erased elements.
+/// Erases all elements that satisfy the predicate `pred` from the container.
+///
+/// @param map The container to erase elements from.
+/// @param pred The predicate that selects which elements to erase.
+/// @return The number of erased elements.
 template <typename K, typename V, typename C, typename A, typename Pred>
 typename btree_map<K, V, C, A>::size_type erase_if(
     btree_map<K, V, C, A> &map, Pred pred) {
   return container_internal::btree_access::erase_if(map, std::move(pred));
 }
 
-// absl::btree_multimap
-//
-// An `absl::btree_multimap<K, V>` is an ordered associative container of
-// keys and associated values designed to be a more efficient replacement for
-// `std::multimap` (in most cases). Unlike `absl::btree_map`, a B-tree multimap
-// allows multiple elements with equivalent keys.
-//
-// Keys are sorted using an (optional) comparison function, which defaults to
-// `std::less<K>`.
-//
-// An `absl::btree_multimap<K, V>` uses a default allocator of
-// `std::allocator<std::pair<const K, V>>` to allocate (and deallocate)
-// nodes, and construct and destruct values within those nodes. You may
-// instead specify a custom allocator `A` (which in turn requires specifying a
-// custom comparator `C`) as in `absl::btree_multimap<K, V, C, A>`.
-//
+/// An ordered associative container of keys and associated values that allows
+/// equivalent keys.
+///
+/// An `absl::btree_multimap<K, V>` is an ordered associative container of
+/// keys and associated values designed to be a more efficient replacement for
+/// `std::multimap` (in most cases). Unlike `absl::btree_map`, a B-tree multimap
+/// allows multiple elements with equivalent keys.
+///
+/// Keys are sorted using an (optional) comparison function, which defaults to
+/// `std::less<K>`.
+///
+/// An `absl::btree_multimap<K, V>` uses a default allocator of
+/// `std::allocator<std::pair<const K, V>>` to allocate (and deallocate)
+/// nodes, and construct and destruct values within those nodes. You may
+/// instead specify a custom allocator `A` (which in turn requires specifying a
+/// custom comparator `C`) as in `absl::btree_multimap<K, V, C, A>`.
 template <typename Key, typename Value, typename Compare = std::less<Key>,
           typename Alloc = std::allocator<std::pair<const Key, Value>>>
 class ABSL_ATTRIBUTE_OWNER btree_multimap
@@ -594,6 +596,7 @@ class ABSL_ATTRIBUTE_OWNER btree_multimap
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
   //   absl::btree_multimap<int, std::string> map7(v.begin(), v.end());
+  /// Constructs an empty `btree_multimap`.
   btree_multimap() {}
   using Base::Base;
 
@@ -849,18 +852,20 @@ class ABSL_ATTRIBUTE_OWNER btree_multimap
   using Base::value_comp;
 };
 
-// absl::swap(absl::btree_multimap<>, absl::btree_multimap<>)
-//
-// Swaps the contents of two `absl::btree_multimap` containers.
+/// Swaps the contents of two `absl::btree_multimap` containers.
+///
+/// @param x The first container to swap.
+/// @param y The second container to swap.
 template <typename K, typename V, typename C, typename A>
 void swap(btree_multimap<K, V, C, A> &x, btree_multimap<K, V, C, A> &y) {
   return x.swap(y);
 }
 
-// absl::erase_if(absl::btree_multimap<>, Pred)
-//
-// Erases all elements that satisfy the predicate pred from the container.
-// Returns the number of erased elements.
+/// Erases all elements that satisfy the predicate `pred` from the container.
+///
+/// @param map The container to erase elements from.
+/// @param pred The predicate that selects which elements to erase.
+/// @return The number of erased elements.
 template <typename K, typename V, typename C, typename A, typename Pred>
 typename btree_multimap<K, V, C, A>::size_type erase_if(
     btree_multimap<K, V, C, A> &map, Pred pred) {

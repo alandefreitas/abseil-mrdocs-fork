@@ -27,6 +27,7 @@
 
 #include "absl/base/config.h"
 
+// The Abseil library namespace.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 namespace flags_internal {
@@ -37,9 +38,8 @@ class Flag;
 
 }  // namespace flags_internal
 
-// Flag
-//
-// Forward declaration of the `absl::Flag` type for use in defining the macro.
+/// Forward declaration of the `absl::Flag` type for use in defining the
+/// macro.
 template <typename T>
 using Flag = flags_internal::Flag<T>;
 

@@ -130,6 +130,12 @@ struct FlatHashSetPolicy;
 //   if (ducks.contains("dewey")) {
 //     std::cout << "We found dewey!" << std::endl;
 //   }
+/// An unordered associative container of unique keys, optimized for speed and
+/// memory footprint.
+///
+/// An `absl::flat_hash_set<T>` is an unordered associative container which
+/// has been optimized for both speed and memory footprint in most common use
+/// cases. Its interface is similar to that of `std::unordered_set<T>`.
 template <
     class T,
     class Hash = typename container_internal::FlatHashSetPolicy<T>::DefaultHash,
@@ -195,6 +201,7 @@ class ABSL_ATTRIBUTE_OWNER flat_hash_set
   //
   //   std::vector<std::string> v = {"a", "b"};
   //   absl::flat_hash_set<std::string> set8(std::from_range, v);
+  /// Constructs an empty `flat_hash_set`.
   flat_hash_set() {}
   using Base::Base;
 
@@ -496,25 +503,21 @@ class ABSL_ATTRIBUTE_OWNER flat_hash_set
   using Base::key_eq;
 };
 
-// erase_if(flat_hash_set<>, Pred)
-//
-// Erases all elements that satisfy the predicate `pred` from the container `c`.
-// Returns the number of erased elements.
+/// Erases all elements that satisfy the predicate `pred` from the container `c`.
+///
+/// @param c The container to erase elements from.
+/// @param pred The predicate that selects which elements to erase.
+/// @return The number of erased elements.
 template <typename T, typename H, typename E, typename A, typename Predicate>
 typename flat_hash_set<T, H, E, A>::size_type erase_if(
     flat_hash_set<T, H, E, A>& c, Predicate pred) {
   return container_internal::EraseIf(pred, &c);
 }
 
-// swap(flat_hash_set<>, flat_hash_set<>)
-//
-// Swaps the contents of two `flat_hash_set` containers.
-//
-// NOTE: we need to define this function template in order for
-// `flat_hash_set::swap` to be called instead of `std::swap`. Even though we
-// have `swap(raw_hash_set&, raw_hash_set&)` defined, that function requires a
-// derived-to-base conversion, whereas `std::swap` is a function template so
-// `std::swap` will be preferred by compiler.
+/// Swaps the contents of two `flat_hash_set` containers.
+///
+/// @param x The first container to swap.
+/// @param y The second container to swap.
 template <typename T, typename H, typename E, typename A>
 void swap(flat_hash_set<T, H, E, A>& x,
           flat_hash_set<T, H, E, A>& y) noexcept(noexcept(x.swap(y))) {

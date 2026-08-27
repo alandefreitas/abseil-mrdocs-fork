@@ -40,45 +40,42 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// -----------------------------------------------------------------------------
-// absl::SeedSeq
-// -----------------------------------------------------------------------------
-//
-// `absl::SeedSeq` constructs a seed sequence according to [rand.req.seedseq]
-// for use within bit generators. `absl::SeedSeq`, unlike `std::seed_seq`
-// additionally salts the generated seeds with extra implementation-defined
-// entropy. For that reason, you can use `absl::SeedSeq` in combination with
-// standard library bit generators (e.g. `std::mt19937`) to introduce
-// non-determinism in your seeds.
-//
-// Example:
-//
-//   absl::SeedSeq my_seed_seq({a, b, c});
-//   std::mt19937 my_bitgen(my_seed_seq);
-//
+/// A seed sequence conforming to [rand.req.seedseq] for use within bit
+/// generators.
+///
+/// `absl::SeedSeq`, unlike `std::seed_seq`, additionally salts the generated
+/// seeds with extra implementation-defined entropy. For that reason, you can
+/// use `absl::SeedSeq` in combination with standard library bit generators
+/// (e.g. `std::mt19937`) to introduce non-determinism in your seeds.
+///
+/// Example:
+///
+///   absl::SeedSeq my_seed_seq({a, b, c});
+///   std::mt19937 my_bitgen(my_seed_seq);
+///
 using SeedSeq = random_internal::SaltedSeedSeq<std::seed_seq>;
 
-// -----------------------------------------------------------------------------
-// absl::CreateSeedSeqFrom(bitgen*)
-// -----------------------------------------------------------------------------
-//
-// Constructs a seed sequence conforming to [rand.req.seedseq] using variates
-// produced by a provided bit generator.
-//
-// You should generally avoid direct construction of seed sequences, but
-// use-cases for reuse of a seed sequence to construct identical bit generators
-// may be helpful (eg. replaying a simulation whose state is derived from bit
-// generator values).
-//
-// If bitgen == nullptr, then behavior is undefined.
-//
-// Example:
-//
-//   absl::BitGen my_bitgen;
-//   auto seed_seq = absl::CreateSeedSeqFrom(&my_bitgen);
-//   absl::BitGen new_engine(seed_seq); // derived from my_bitgen, but not
-//                                      // correlated.
-//
+/// Constructs a seed sequence from variates produced by a bit generator.
+///
+/// Constructs a seed sequence conforming to [rand.req.seedseq] using variates
+/// produced by a provided bit generator.
+///
+/// You should generally avoid direct construction of seed sequences, but
+/// use-cases for reuse of a seed sequence to construct identical bit generators
+/// may be helpful (eg. replaying a simulation whose state is derived from bit
+/// generator values).
+///
+/// If `urbg == nullptr`, then behavior is undefined.
+///
+/// Example:
+///
+///   absl::BitGen my_bitgen;
+///   auto seed_seq = absl::CreateSeedSeqFrom(&my_bitgen);
+///   absl::BitGen new_engine(seed_seq); // derived from my_bitgen, but not
+///                                      // correlated.
+///
+/// @param urbg The bit generator used to produce the seed material.
+/// @return A seed sequence derived from the bit generator.
 template <typename URBG>
 SeedSeq CreateSeedSeqFrom(URBG* urbg) {
   SeedSeq::result_type seed_material[random_internal::kEntropyBlocksNeeded];
@@ -90,21 +87,19 @@ SeedSeq CreateSeedSeqFrom(URBG* urbg) {
   return SeedSeq(std::begin(seed_material), std::end(seed_material));
 }
 
-// -----------------------------------------------------------------------------
-// absl::MakeSeedSeq()
-// -----------------------------------------------------------------------------
-//
-// Constructs an `absl::SeedSeq` salting the generated values using
-// implementation-defined entropy. The returned sequence can be used to create
-// equivalent bit generators correlated using this sequence.
-//
-// Example:
-//
-//   auto my_seed_seq = absl::MakeSeedSeq();
-//   std::mt19937 rng1(my_seed_seq);
-//   std::mt19937 rng2(my_seed_seq);
-//   EXPECT_EQ(rng1(), rng2());
-//
+/// Constructs an `absl::SeedSeq` salted with implementation-defined entropy.
+///
+/// The returned sequence can be used to create equivalent bit generators
+/// correlated using this sequence.
+///
+/// Example:
+///
+///   auto my_seed_seq = absl::MakeSeedSeq();
+///   std::mt19937 rng1(my_seed_seq);
+///   std::mt19937 rng2(my_seed_seq);
+///   EXPECT_EQ(rng1(), rng2());
+///
+/// @return A newly constructed seed sequence.
 SeedSeq MakeSeedSeq();
 
 ABSL_NAMESPACE_END

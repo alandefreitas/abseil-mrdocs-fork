@@ -23,20 +23,19 @@
 
 #include "absl/base/config.h"
 
+// The Abseil namespace, containing all Abseil library APIs.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// InitializeLog()
-//
-// Initializes the Abseil logging library.
-//
-// Before this function is called, all log messages are directed only to stderr.
-// After initialization is finished, log messages are directed to all registered
-// `LogSink`s.
-//
-// It is an error to call this function twice.
-//
-// There is no corresponding function to shut down the logging library.
+/// Initializes the Abseil logging library.
+///
+/// Before this function is called, all log messages are directed only to
+/// stderr. After initialization is finished, log messages are directed to
+/// all registered `LogSink`s.
+///
+/// It is an error to call this function twice.
+///
+/// There is no corresponding function to shut down the logging library.
 void InitializeLog();
 
 ABSL_NAMESPACE_END

@@ -63,10 +63,16 @@
 // The absl::kConstInit tag should only be used to define objects with static
 // or thread_local storage duration.
 
+/// Abseil's root namespace. Abseil is Google's open-source collection of C++
+/// library code that augments the C++ standard library.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// Enumerates the constructor tags used to mark an object as safe for use as
+/// a global variable.
 enum ConstInitType {
+  /// Tag value passed to a constructor to request constant initialization,
+  /// avoiding the usual lifetime issues that can affect globals.
   kConstInit,
 };
 

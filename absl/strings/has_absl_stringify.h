@@ -42,14 +42,13 @@ class UnimplementedSink {
 
 }  // namespace strings_internal
 
-// `HasAbslStringify<T>` detects if type `T` supports the `AbslStringify()`
-// customization point (see
-// https://abseil.io/docs/cpp/guides/format#abslstringify for the
-// documentation).
-//
-// Note that there are types that can be `StrCat`-ed that do not use the
-// `AbslStringify` customization point (for example, `int`).
-
+/// Detects if type `T` supports the `AbslStringify()` customization point.
+///
+/// See https://abseil.io/docs/cpp/guides/format#abslstringify for the
+/// documentation.
+///
+/// Note that there are types that can be `StrCat`-ed that do not use the
+/// `AbslStringify` customization point (for example, `int`).
 template <typename T, typename = void>
 struct HasAbslStringify : std::false_type {};
 

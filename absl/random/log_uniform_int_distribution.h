@@ -30,13 +30,12 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// log_uniform_int_distribution:
-//
-// Returns a random variate R in range [min, max] such that
-// floor(log(R-min, base)) is uniformly distributed.
-// We ensure uniformity by discretization using the
-// boundary sets [0, 1, base, base * base, ... min(base*n, max)]
-//
+/// Returns a random variate R in range [min, max] such that
+/// floor(log(R-min, base)) is uniformly distributed.
+///
+/// We ensure uniformity by discretization using the
+/// boundary sets [0, 1, base, base * base, ... min(base*n, max)].
+///
 template <typename IntType = int>
 class log_uniform_int_distribution {
  private:
@@ -44,12 +43,20 @@ class log_uniform_int_distribution {
       typename random_internal::make_unsigned_bits<IntType>::type;
 
  public:
+  /// The type of the values produced by the distribution.
   using result_type = IntType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = log_uniform_int_distribution;
 
+    /// Constructs the parameter set from the bounds and logarithm base.
+    ///
+    /// @param min The lower bound of the closed interval.
+    /// @param max The upper bound of the closed interval.
+    /// @param base The base of the logarithm.
     explicit param_type(
         result_type min = 0,
         result_type max = (std::numeric_limits<result_type>::max)(),
@@ -84,14 +91,33 @@ class log_uniform_int_distribution {
       }
     }
 
+    /// Returns the lower bound of the interval.
+    ///
+    /// @return The lower bound.
     result_type(min)() const { return min_; }
+    /// Returns the upper bound of the interval.
+    ///
+    /// @return The upper bound.
     result_type(max)() const { return max_; }
+    /// Returns the base of the logarithm.
+    ///
+    /// @return The logarithm base.
     result_type base() const { return base_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.min_ == b.min_ && a.max_ == b.max_ && a.base_ == b.base_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -113,41 +139,86 @@ class log_uniform_int_distribution {
                   "parameterized using an integral type.");
   };
 
+  /// Constructs a distribution over the entire range of `result_type`.
   log_uniform_int_distribution() : log_uniform_int_distribution(0) {}
 
+  /// Constructs a distribution over the closed interval [min, max].
+  ///
+  /// @param min The lower bound of the closed interval.
+  /// @param max The upper bound of the closed interval.
+  /// @param base The base of the logarithm.
   explicit log_uniform_int_distribution(
       result_type min,
       result_type max = (std::numeric_limits<result_type>::max)(),
       result_type base = 2)
       : param_(min, max, base) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit log_uniform_int_distribution(const param_type& p) : param_(p) {}
 
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
-  // generating functions
+  /// Generates a random value in the interval [min, max].
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random value in the closed interval [min, max].
   template <typename URBG>
   result_type operator()(URBG& g) {  // NOLINT(runtime/references)
     return (*this)(g, param_);
   }
 
+  /// Generates a random value using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random value in the closed interval [min, max].
   template <typename URBG>
   result_type operator()(URBG& g,  // NOLINT(runtime/references)
                          const param_type& p) {
     return static_cast<result_type>((p.min)() + Generate(g, p));
   }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return The lower bound.
   result_type(min)() const { return (param_.min)(); }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return The upper bound.
   result_type(max)() const { return (param_.max)(); }
+  /// Returns the base of the logarithm.
+  ///
+  /// @return The logarithm base.
   result_type base() const { return param_.base(); }
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param p The new parameter set.
   void param(const param_type& p) { param_ = p; }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const log_uniform_int_distribution& a,
                          const log_uniform_int_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const log_uniform_int_distribution& a,
                          const log_uniform_int_distribution& b) {
     return a.param_ != b.param_;
@@ -210,6 +281,11 @@ log_uniform_int_distribution<IntType>::Generate(
       static_cast<result_type>(lo), static_cast<result_type>(hi))(g);
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -223,6 +299,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,       // NOLINT(runtime/references)

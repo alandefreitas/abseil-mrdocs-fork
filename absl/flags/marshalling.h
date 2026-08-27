@@ -213,8 +213,24 @@ ABSL_NAMESPACE_BEGIN
 
 // Forward declaration to be used inside composable flag parse/unparse
 // implementations
+
+/// Parses a string value into a flag value of type `T`. Do not add overloads
+/// of this function for your type directly; instead, add an
+/// `AbslParseFlag()` free function as documented above.
+///
+/// @param input The string to parse.
+/// @param dst The destination to store the parsed value in.
+/// @param error Set to an error message when parsing fails.
+/// @return `true` if `input` was successfully parsed into `*dst`.
 template <typename T>
 inline bool ParseFlag(absl::string_view input, T* dst, std::string* error);
+
+/// Unparses a flag value of type `T` into a string value. Do not add
+/// overloads of this function for your type directly; instead, add an
+/// `AbslUnparseFlag()` free function as documented above.
+///
+/// @param v The value to unparse.
+/// @return The string representation of `v`.
 template <typename T>
 inline std::string UnparseFlag(const T& v);
 
@@ -325,9 +341,27 @@ inline std::string UnparseFlag(const T& v) {
 // Overloads for `absl::LogSeverity` can't (easily) appear alongside that type's
 // definition because it is layered below flags.  See proper documentation in
 // base/log_severity.h.
+
+/// Forward declaration of `absl::LogSeverity`. See `base/log_severity.h` for
+/// the full definition.
 enum class LogSeverity : int;
-bool AbslParseFlag(absl::string_view, absl::LogSeverity*, std::string*);
-std::string AbslUnparseFlag(absl::LogSeverity);
+
+/// Parses an `absl::LogSeverity` flag value. See `base/log_severity.h` for
+/// the full documentation.
+///
+/// @param text The flag value text to parse.
+/// @param dst Output parameter that receives the parsed value.
+/// @param err Output parameter that receives an error message on failure.
+/// @return `true` if the value was successfully parsed.
+bool AbslParseFlag(absl::string_view text, absl::LogSeverity* dst,
+                   std::string* err);
+
+/// Unparses an `absl::LogSeverity` flag value. See `base/log_severity.h` for
+/// the full documentation.
+///
+/// @param severity The value to unparse.
+/// @return The string representation of the flag value.
+std::string AbslUnparseFlag(absl::LogSeverity severity);
 
 ABSL_NAMESPACE_END
 }  // namespace absl

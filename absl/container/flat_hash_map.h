@@ -136,6 +136,12 @@ struct FlatHashMapPolicy;
 //   if (result != ducks.end()) {
 //     std::cout << "Result: " << result->second << std::endl;
 //   }
+/// An unordered associative container of unique keys and associated values,
+/// optimized for speed and memory footprint.
+///
+/// An `absl::flat_hash_map<K, V>` is an unordered associative container which
+/// has been optimized for both speed and memory footprint in most common use
+/// cases. Its interface is similar to that of `std::unordered_map<K, V>`.
 template <
     class K, class V,
     class Hash =
@@ -202,6 +208,7 @@ class ABSL_ATTRIBUTE_OWNER flat_hash_map
   //
   //   std::vector<std::pair<int, std::string>> v = {{1, "a"}, {2, "b"}};
   //   absl::flat_hash_map<int, std::string> map8(std::from_range, v);
+  /// Constructs an empty `flat_hash_map`.
   flat_hash_map() {}
   using Base::Base;
 
@@ -589,10 +596,11 @@ class ABSL_ATTRIBUTE_OWNER flat_hash_map
   using Base::key_eq;
 };
 
-// erase_if(flat_hash_map<>, Pred)
-//
-// Erases all elements that satisfy the predicate `pred` from the container `c`.
-// Returns the number of erased elements.
+/// Erases all elements that satisfy the predicate `pred` from the container `c`.
+///
+/// @param c The container to erase elements from.
+/// @param pred The predicate that selects which elements to erase.
+/// @return The number of erased elements.
 template <typename K, typename V, typename H, typename E, typename A,
           typename Predicate>
 typename flat_hash_map<K, V, H, E, A>::size_type erase_if(
@@ -600,15 +608,10 @@ typename flat_hash_map<K, V, H, E, A>::size_type erase_if(
   return container_internal::EraseIf(pred, &c);
 }
 
-// swap(flat_hash_map<>, flat_hash_map<>)
-//
-// Swaps the contents of two `flat_hash_map` containers.
-//
-// NOTE: we need to define this function template in order for
-// `flat_hash_set::swap` to be called instead of `std::swap`. Even though we
-// have `swap(raw_hash_set&, raw_hash_set&)` defined, that function requires a
-// derived-to-base conversion, whereas `std::swap` is a function template so
-// `std::swap` will be preferred by compiler.
+/// Swaps the contents of two `flat_hash_map` containers.
+///
+/// @param x The first container to swap.
+/// @param y The second container to swap.
 template <typename K, typename V, typename H, typename E, typename A>
 void swap(flat_hash_map<K, V, H, E, A>& x,
           flat_hash_map<K, V, H, E, A>& y) noexcept(noexcept(x.swap(y))) {

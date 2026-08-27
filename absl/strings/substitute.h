@@ -275,11 +275,20 @@ constexpr int PlaceholderBitmask(const char* absl_nonnull format) {
 //    absl::SubstituteAndAppend(boilerplate, format, args...);
 //  }
 //
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
 inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                 absl::string_view format) {
   substitute_internal::SubstituteAndAppendArray(output, format, nullptr, 0);
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
 inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                 absl::string_view format,
                                 const substitute_internal::Arg& a0) {
@@ -288,6 +297,12 @@ inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
 inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                 absl::string_view format,
                                 const substitute_internal::Arg& a0,
@@ -297,6 +312,13 @@ inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
 inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                 absl::string_view format,
                                 const substitute_internal::Arg& a0,
@@ -307,6 +329,14 @@ inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
 inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                 absl::string_view format,
                                 const substitute_internal::Arg& a0,
@@ -319,6 +349,15 @@ inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
 inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                 absl::string_view format,
                                 const substitute_internal::Arg& a0,
@@ -332,6 +371,16 @@ inline void SubstituteAndAppend(std::string* absl_nonnull output,
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
 inline void SubstituteAndAppend(
     std::string* absl_nonnull output, absl::string_view format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -343,6 +392,17 @@ inline void SubstituteAndAppend(
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
 inline void SubstituteAndAppend(
     std::string* absl_nonnull output, absl::string_view format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -356,6 +416,18 @@ inline void SubstituteAndAppend(
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
 inline void SubstituteAndAppend(
     std::string* absl_nonnull output, absl::string_view format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -369,6 +441,19 @@ inline void SubstituteAndAppend(
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
 inline void SubstituteAndAppend(
     std::string* absl_nonnull output, absl::string_view format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -383,6 +468,20 @@ inline void SubstituteAndAppend(
                                                 std::size(args));
 }
 
+/// Substitutes variables into `format` and appends the result to `output`.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
+/// @param a9 Substitution argument for `$9`.
 inline void SubstituteAndAppend(
     std::string* absl_nonnull output, absl::string_view format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -400,6 +499,11 @@ inline void SubstituteAndAppend(
 #if defined(ABSL_BAD_CALL_IF)
 // This body of functions catches cases where the number of placeholders
 // doesn't match the number of data arguments.
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
 void SubstituteAndAppend(std::string* absl_nonnull output,
                          const char* absl_nonnull format)
     ABSL_BAD_CALL_IF(
@@ -408,6 +512,12 @@ void SubstituteAndAppend(std::string* absl_nonnull output,
         "but this format string either has a $[0-9] in it or contains "
         "an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
 void SubstituteAndAppend(std::string* absl_nonnull output,
                          const char* absl_nonnull format,
                          const substitute_internal::Arg& a0)
@@ -417,6 +527,13 @@ void SubstituteAndAppend(std::string* absl_nonnull output,
                      "one of $1-$9, or contains an unescaped $ character (use "
                      "$$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
 void SubstituteAndAppend(std::string* absl_nonnull output,
                          const char* absl_nonnull format,
                          const substitute_internal::Arg& a0,
@@ -427,6 +544,14 @@ void SubstituteAndAppend(std::string* absl_nonnull output,
         "missing its $0/$1, contains one of $2-$9, or contains an "
         "unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
 void SubstituteAndAppend(std::string* absl_nonnull output,
                          const char* absl_nonnull format,
                          const substitute_internal::Arg& a0,
@@ -438,6 +563,15 @@ void SubstituteAndAppend(std::string* absl_nonnull output,
         "this format string is missing its $0/$1/$2, contains one of "
         "$3-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
 void SubstituteAndAppend(std::string* absl_nonnull output,
                          const char* absl_nonnull format,
                          const substitute_internal::Arg& a0,
@@ -450,6 +584,16 @@ void SubstituteAndAppend(std::string* absl_nonnull output,
         "this format string is missing its $0-$3, contains one of "
         "$4-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
 void SubstituteAndAppend(std::string* absl_nonnull output,
                          const char* absl_nonnull format,
                          const substitute_internal::Arg& a0,
@@ -463,6 +607,17 @@ void SubstituteAndAppend(std::string* absl_nonnull output,
         "this format string is missing its $0-$4, contains one of "
         "$5-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
 void SubstituteAndAppend(
     std::string* absl_nonnull output, const char* absl_nonnull format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -474,6 +629,18 @@ void SubstituteAndAppend(
         "this format string is missing its $0-$5, contains one of "
         "$6-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
 void SubstituteAndAppend(
     std::string* absl_nonnull output, const char* absl_nonnull format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -486,6 +653,19 @@ void SubstituteAndAppend(
         "this format string is missing its $0-$6, contains one of "
         "$7-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
 void SubstituteAndAppend(
     std::string* absl_nonnull output, const char* absl_nonnull format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -498,6 +678,20 @@ void SubstituteAndAppend(
         "this format string is missing its $0-$7, contains one of "
         "$8-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
 void SubstituteAndAppend(
     std::string* absl_nonnull output, const char* absl_nonnull format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -511,6 +705,21 @@ void SubstituteAndAppend(
         "this format string is missing its $0-$8, contains a $9, or "
         "contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `SubstituteAndAppend()` that fails to compile when the
+/// number of placeholders does not match the number of arguments.
+///
+/// @param output The string that the substituted result is appended to.
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
+/// @param a9 Substitution argument for `$9`.
 void SubstituteAndAppend(
     std::string* absl_nonnull output, const char* absl_nonnull format,
     const substitute_internal::Arg& a0, const substitute_internal::Arg& a1,
@@ -541,12 +750,21 @@ void SubstituteAndAppend(
 //  void VarMsg(absl::string_view format, const Args&... args) {
 //    std::string s = absl::Substitute(format, args...);
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(absl::string_view format) {
   std::string result;
   SubstituteAndAppend(&result, format);
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0) {
   std::string result;
@@ -554,6 +772,12 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1) {
@@ -562,6 +786,13 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2) {
@@ -570,6 +801,14 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -579,6 +818,15 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -588,6 +836,16 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -598,6 +856,17 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -608,6 +877,18 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -619,6 +900,19 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -630,6 +924,20 @@ void SubstituteAndAppend(
   return result;
 }
 
+/// Substitutes variables into `format` and returns the result.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
+/// @param a9 Substitution argument for `$9`.
+/// @return The formatted string.
 [[nodiscard]] inline std::string Substitute(
     absl::string_view format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -645,12 +953,23 @@ void SubstituteAndAppend(
 #if defined(ABSL_BAD_CALL_IF)
 // This body of functions catches cases where the number of placeholders
 // doesn't match the number of data arguments.
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format)
     ABSL_BAD_CALL_IF(substitute_internal::PlaceholderBitmask(format) != 0,
                      "There were no substitution arguments "
                      "but this format string either has a $[0-9] in it or "
                      "contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format,
                        const substitute_internal::Arg& a0)
     ABSL_BAD_CALL_IF(
@@ -659,6 +978,13 @@ std::string Substitute(const char* absl_nonnull format,
         "this format string is missing its $0, contains one of $1-$9, "
         "or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format,
                        const substitute_internal::Arg& a0,
                        const substitute_internal::Arg& a1)
@@ -668,6 +994,14 @@ std::string Substitute(const char* absl_nonnull format,
         "this format string is missing its $0/$1, contains one of "
         "$2-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format,
                        const substitute_internal::Arg& a0,
                        const substitute_internal::Arg& a1,
@@ -678,6 +1012,15 @@ std::string Substitute(const char* absl_nonnull format,
         "this format string is missing its $0/$1/$2, contains one of "
         "$3-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format,
                        const substitute_internal::Arg& a0,
                        const substitute_internal::Arg& a1,
@@ -689,6 +1032,16 @@ std::string Substitute(const char* absl_nonnull format,
         "this format string is missing its $0-$3, contains one of "
         "$4-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format,
                        const substitute_internal::Arg& a0,
                        const substitute_internal::Arg& a1,
@@ -701,6 +1054,17 @@ std::string Substitute(const char* absl_nonnull format,
         "this format string is missing its $0-$4, contains one of "
         "$5-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @return The formatted string.
 std::string Substitute(const char* absl_nonnull format,
                        const substitute_internal::Arg& a0,
                        const substitute_internal::Arg& a1,
@@ -714,6 +1078,18 @@ std::string Substitute(const char* absl_nonnull format,
         "this format string is missing its $0-$5, contains one of "
         "$6-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @return The formatted string.
 std::string Substitute(
     const char* absl_nonnull format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -725,6 +1101,19 @@ std::string Substitute(
         "this format string is missing its $0-$6, contains one of "
         "$7-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @return The formatted string.
 std::string Substitute(
     const char* absl_nonnull format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -737,6 +1126,20 @@ std::string Substitute(
         "this format string is missing its $0-$7, contains one of "
         "$8-$9, or contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
+/// @return The formatted string.
 std::string Substitute(
     const char* absl_nonnull format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,
@@ -749,6 +1152,21 @@ std::string Substitute(
         "this format string is missing its $0-$8, contains a $9, or "
         "contains an unescaped $ character (use $$ instead)");
 
+/// Overload of `Substitute()` that fails to compile when the number of
+/// placeholders does not match the number of arguments.
+///
+/// @param format The format string with `$0`-`$9` placeholders.
+/// @param a0 Substitution argument for `$0`.
+/// @param a1 Substitution argument for `$1`.
+/// @param a2 Substitution argument for `$2`.
+/// @param a3 Substitution argument for `$3`.
+/// @param a4 Substitution argument for `$4`.
+/// @param a5 Substitution argument for `$5`.
+/// @param a6 Substitution argument for `$6`.
+/// @param a7 Substitution argument for `$7`.
+/// @param a8 Substitution argument for `$8`.
+/// @param a9 Substitution argument for `$9`.
+/// @return The formatted string.
 std::string Substitute(
     const char* absl_nonnull format, const substitute_internal::Arg& a0,
     const substitute_internal::Arg& a1, const substitute_internal::Arg& a2,

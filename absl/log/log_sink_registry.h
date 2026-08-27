@@ -29,33 +29,42 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// AddLogSink(), RemoveLogSink()
-//
-// Adds or removes a `absl::LogSink` as a consumer of logging data.
-//
-// These functions are thread-safe.
-//
-// It is an error to attempt to add a sink that's already registered or to
-// attempt to remove one that isn't.
-//
-// To avoid unbounded recursion, dispatch to registered `absl::LogSink`s is
-// disabled per-thread while running the `Send()` method of registered
-// `absl::LogSink`s.  Affected messages are dispatched to a special internal
-// sink instead which writes them to `stderr`.
-//
-// Do not call these inside `absl::LogSink::Send`.
+/// Adds a `absl::LogSink` as a consumer of logging data.
+///
+/// This function is thread-safe.
+///
+/// It is an error to attempt to add a sink that's already registered.
+///
+/// To avoid unbounded recursion, dispatch to registered `absl::LogSink`s is
+/// disabled per-thread while running the `Send()` method of registered
+/// `absl::LogSink`s.  Affected messages are dispatched to a special
+/// internal sink instead which writes them to `stderr`.
+///
+/// Do not call this inside `absl::LogSink::Send`.
+/// @param sink The sink to register.
 inline void AddLogSink(absl::LogSink* absl_nonnull sink) {
   log_internal::AddLogSink(sink);
 }
+/// Removes a `absl::LogSink` as a consumer of logging data.
+///
+/// This function is thread-safe.
+///
+/// It is an error to attempt to remove a sink that isn't registered.
+///
+/// To avoid unbounded recursion, dispatch to registered `absl::LogSink`s is
+/// disabled per-thread while running the `Send()` method of registered
+/// `absl::LogSink`s.  Affected messages are dispatched to a special
+/// internal sink instead which writes them to `stderr`.
+///
+/// Do not call this inside `absl::LogSink::Send`.
+/// @param sink The sink to unregister.
 inline void RemoveLogSink(absl::LogSink* absl_nonnull sink) {
   log_internal::RemoveLogSink(sink);
 }
 
-// FlushLogSinks()
-//
-// Calls `absl::LogSink::Flush` on all registered sinks.
-//
-// Do not call this inside `absl::LogSink::Send`.
+/// Calls `absl::LogSink::Flush` on all registered sinks.
+///
+/// Do not call this inside `absl::LogSink::Send`.
 inline void FlushLogSinks() { log_internal::FlushLogSinks(); }
 
 ABSL_NAMESPACE_END

@@ -37,15 +37,18 @@ namespace flags_internal {
 class FlagSaverImpl;
 }  // namespace flags_internal
 
-// FindCommandLineFlag()
-//
-// Returns the reflection handle of an Abseil flag of the specified name, or
-// `nullptr` if not found. This function will emit a warning if the name of a
-// 'retired' flag is specified.
+/// Returns the reflection handle of an Abseil flag of the specified name, or
+/// `nullptr` if not found. This function will emit a warning if the name of
+/// a 'retired' flag is specified.
+///
+/// @param name The name of the flag to look up.
+/// @return The reflection handle for the flag, or `nullptr` if not found.
 absl::CommandLineFlag* FindCommandLineFlag(absl::string_view name);
 
-// Returns current state of the Flags registry in a form of mapping from flag
-// name to a flag reflection handle.
+/// Returns current state of the Flags registry in a form of mapping from
+/// flag name to a flag reflection handle.
+///
+/// @return A mapping from flag name to flag reflection handle.
 absl::flat_hash_map<absl::string_view, absl::CommandLineFlag*> GetAllFlags();
 
 //------------------------------------------------------------------------------
@@ -71,13 +74,35 @@ absl::flat_hash_map<absl::string_view, absl::CommandLineFlag*> GetAllFlags();
 //
 // This class is thread-safe.
 
+/// A `FlagSaver` object stores the state of flags in the scope where the
+/// `FlagSaver` is defined, allowing modification of those flags within that
+/// scope and automatic restoration of the flags to their previous state
+/// upon leaving the scope.
+///
+/// A `FlagSaver` can be used within tests to temporarily change the test
+/// environment and restore the test case to its previous state.
+///
+/// Example:
+///
+///   void MyFunc() {
+///    absl::FlagSaver fs;
+///    ...
+///    absl::SetFlag(&FLAGS_myFlag, otherValue);
+///    ...
+///  } // scope of FlagSaver left, flags return to previous state
+///
+/// This class is thread-safe.
 class FlagSaver {
  public:
+  /// Saves the current state of all flags.
   FlagSaver();
+  /// Restores all flags to the state saved at construction.
   ~FlagSaver();
 
-  FlagSaver(const FlagSaver&) = delete;
-  void operator=(const FlagSaver&) = delete;
+  /// Not copyable.
+  FlagSaver(const FlagSaver& other) = delete;
+  /// Not assignable.
+  void operator=(const FlagSaver& other) = delete;
 
  private:
   flags_internal::FlagSaverImpl* impl_;

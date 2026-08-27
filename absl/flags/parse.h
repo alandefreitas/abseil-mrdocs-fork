@@ -33,20 +33,33 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// This type represent information about an unrecognized flag in the command
-// line.
+/// Represents information about an unrecognized flag in the command line.
 struct UnrecognizedFlag {
-  enum Source { kFromArgv, kFromFlagfile };
+  /// Indicates where an unrecognized flag was found.
+  enum Source {
+    kFromArgv,      ///< The flag was found on the original command line.
+    kFromFlagfile   ///< The flag was read from a flag file.
+  };
 
+  /// Constructs an `UnrecognizedFlag` for a flag found at the given source.
+  ///
+  /// @param s Where the flag was found.
+  /// @param f The name of the unrecognized flag.
   explicit UnrecognizedFlag(Source s, absl::string_view f)
       : source(s), flag_name(f) {}
-  // This field indicates where we found this flag: on the original command line
-  // or read in some flag file.
+  /// Indicates where we found this flag: on the original command line
+  /// or read in some flag file.
   Source source;
-  // Name of the flag we did not recognize in --flag_name=value or --flag_name.
+  /// Name of the flag we did not recognize in --flag_name=value or
+  /// --flag_name.
   std::string flag_name;
 };
 
+/// Compares two `UnrecognizedFlag` instances for equality.
+///
+/// @param lhs The left-hand operand.
+/// @param rhs The right-hand operand.
+/// @return `true` if `lhs` and `rhs` have the same source and flag name.
 inline bool operator==(const UnrecognizedFlag& lhs,
                        const UnrecognizedFlag& rhs) {
   return lhs.source == rhs.source && lhs.flag_name == rhs.flag_name;
@@ -61,83 +74,86 @@ HelpMode ParseAbseilFlagsOnlyImpl(
 
 }  // namespace flags_internal
 
-// ParseAbseilFlagsOnly()
-//
-// Parses a list of command-line arguments, passed in the `argc` and `argv[]`
-// parameters, into a set of Abseil Flag values, returning any unparsed
-// arguments in `positional_args` and `unrecognized_flags` output parameters.
-//
-// This function classifies all the arguments (including content of the
-// flagfiles, if any) into one of the following groups:
-//
-//   * arguments specified as "--flag=value" or "--flag value" that match
-//     registered or built-in Abseil Flags. These are "Abseil Flag arguments."
-//   * arguments specified as "--flag" that are unrecognized as Abseil Flags
-//   * arguments that are not specified as "--flag" are positional arguments
-//   * arguments that follow the flag-terminating delimiter (`--`) are also
-//     treated as positional arguments regardless of their syntax.
-//
-// All of the deduced Abseil Flag arguments are then parsed into their
-// corresponding flag values. If any syntax errors are found in these arguments,
-// the binary exits with code 1.
-//
-// This function also handles Abseil Flags built-in usage flags (e.g. --help)
-// if any were present on the command line.
-//
-// All the remaining positional arguments including original program name
-// (argv[0]) are are returned in the `positional_args` output parameter.
-//
-// All unrecognized flags that are not otherwise ignored are returned in the
-// `unrecognized_flags` output parameter. Note that the special `undefok`
-// flag allows you to specify flags which can be safely ignored; `undefok`
-// specifies these flags as a comma-separated list. Any unrecognized flags
-// that appear within `undefok` will therefore be ignored and not included in
-// the `unrecognized_flag` output parameter.
-//
+/// Parses a list of command-line arguments, passed in the `argc` and
+/// `argv[]` parameters, into a set of Abseil Flag values, returning any
+/// unparsed arguments in `positional_args` and `unrecognized_flags` output
+/// parameters.
+///
+/// This function classifies all the arguments (including content of the
+/// flagfiles, if any) into one of the following groups:
+///
+///   * arguments specified as "--flag=value" or "--flag value" that match
+///     registered or built-in Abseil Flags. These are "Abseil Flag arguments."
+///   * arguments specified as "--flag" that are unrecognized as Abseil Flags
+///   * arguments that are not specified as "--flag" are positional arguments
+///   * arguments that follow the flag-terminating delimiter (`--`) are also
+///     treated as positional arguments regardless of their syntax.
+///
+/// All of the deduced Abseil Flag arguments are then parsed into their
+/// corresponding flag values. If any syntax errors are found in these
+/// arguments, the binary exits with code 1.
+///
+/// This function also handles Abseil Flags built-in usage flags (e.g.
+/// --help) if any were present on the command line.
+///
+/// All the remaining positional arguments including original program name
+/// (argv[0]) are are returned in the `positional_args` output parameter.
+///
+/// All unrecognized flags that are not otherwise ignored are returned in the
+/// `unrecognized_flags` output parameter. Note that the special `undefok`
+/// flag allows you to specify flags which can be safely ignored; `undefok`
+/// specifies these flags as a comma-separated list. Any unrecognized flags
+/// that appear within `undefok` will therefore be ignored and not included
+/// in the `unrecognized_flag` output parameter.
+///
+/// @param argc The number of command-line arguments, as passed to `main()`.
+/// @param argv The command-line arguments, as passed to `main()`.
+/// @param positional_args Receives the remaining positional arguments.
+/// @param unrecognized_flags Receives the flags that were not recognized.
 void ParseAbseilFlagsOnly(int argc, char* argv[],
                           std::vector<char*>& positional_args,
                           std::vector<UnrecognizedFlag>& unrecognized_flags);
 
-// ReportUnrecognizedFlags()
-//
-// Reports an error to `stderr` for all non-ignored unrecognized flags in
-// the provided `unrecognized_flags` list.
+/// Reports an error to `stderr` for all non-ignored unrecognized flags in
+/// the provided `unrecognized_flags` list.
+///
+/// @param unrecognized_flags The unrecognized flags to report.
 void ReportUnrecognizedFlags(
     const std::vector<UnrecognizedFlag>& unrecognized_flags);
 
-// ParseCommandLine()
-//
-// First parses Abseil Flags only from the command line according to the
-// description in `ParseAbseilFlagsOnly`. In addition this function handles
-// unrecognized and usage flags.
-//
-// If any unrecognized flags are located they are reported using
-// `ReportUnrecognizedFlags`.
-//
-// If any errors detected during command line parsing, this routine reports a
-// usage message and aborts the program.
-//
-// If any built-in usage flags were specified on the command line (e.g.
-// `--help`), this function reports help messages and then gracefully exits the
-// program.
-//
-// This function returns all the remaining positional arguments collected by
-// `ParseAbseilFlagsOnly`.
+/// First parses Abseil Flags only from the command line according to the
+/// description in `ParseAbseilFlagsOnly`. In addition this function handles
+/// unrecognized and usage flags.
+///
+/// If any unrecognized flags are located they are reported using
+/// `ReportUnrecognizedFlags`.
+///
+/// If any errors detected during command line parsing, this routine reports
+/// a usage message and aborts the program.
+///
+/// If any built-in usage flags were specified on the command line (e.g.
+/// `--help`), this function reports help messages and then gracefully exits
+/// the program.
+///
+/// @param argc The number of command-line arguments, as passed to `main()`.
+/// @param argv The command-line arguments, as passed to `main()`.
+/// @return All the remaining positional arguments collected by
+/// `ParseAbseilFlagsOnly`.
 std::vector<char*> ParseCommandLine(int argc, char* argv[]);
 
-// DisableFlagfileAndEnvParsing()
-//
-// Disables the processing of flags that load values from secondary sources,
-// specifically `--flagfile`, `--fromenv`, and `--tryfromenv`. When disabled,
-// occurrences of these flags on the command line are skipped without opening
-// files or inspecting environment variables, and a warning is printed to
-// stderr. Direct command-line flags passed via argv are still parsed normally.
-//
-// This is primarily intended as a security precaution for privileged or setuid
-// processes parsing untrusted command lines prior to dropping privileges.
-//
-// Should only be called in `main()` before calling `absl::ParseCommandLine()`
-// or `absl::ParseAbseilFlagsOnly()`.
+/// Disables the processing of flags that load values from secondary
+/// sources, specifically `--flagfile`, `--fromenv`, and `--tryfromenv`. When
+/// disabled, occurrences of these flags on the command line are skipped
+/// without opening files or inspecting environment variables, and a warning
+/// is printed to stderr. Direct command-line flags passed via argv are still
+/// parsed normally.
+///
+/// This is primarily intended as a security precaution for privileged or
+/// setuid processes parsing untrusted command lines prior to dropping
+/// privileges.
+///
+/// Should only be called in `main()` before calling
+/// `absl::ParseCommandLine()` or `absl::ParseAbseilFlagsOnly()`.
 void DisableFlagfileAndEnvParsing();
 
 ABSL_NAMESPACE_END

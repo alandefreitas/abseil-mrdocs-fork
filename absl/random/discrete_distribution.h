@@ -33,44 +33,61 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::discrete_distribution
-//
-// A discrete distribution produces random integers i, where 0 <= i < n
-// distributed according to the discrete probability function:
-//
-//     P(i|p0,...,pn-1)=pi
-//
-// This class is an implementation of discrete_distribution (see
-// [rand.dist.samp.discrete]).
-//
-// The algorithm used is Walker's Aliasing algorithm, described in Knuth, Vol 2.
-// absl::discrete_distribution takes O(N) time to precompute the probabilities
-// (where N is the number of possible outcomes in the distribution) at
-// construction, and then takes O(1) time for each variate generation.  Many
-// other implementations also take O(N) time to construct an ordered sequence of
-// partial sums, plus O(log N) time per variate to binary search.
-//
+/// A distribution over random integers.
+///
+/// A discrete distribution produces random integers i, where 0 <= i < n
+/// distributed according to the discrete probability function:
+///
+///     P(i|p0,...,pn-1)=pi
+///
+/// This class is an implementation of discrete_distribution (see
+/// [rand.dist.samp.discrete]).
+///
+/// The algorithm used is Walker's Aliasing algorithm, described in Knuth, Vol 2.
+/// absl::discrete_distribution takes O(N) time to precompute the probabilities
+/// (where N is the number of possible outcomes in the distribution) at
+/// construction, and then takes O(1) time for each variate generation.  Many
+/// other implementations also take O(N) time to construct an ordered sequence of
+/// partial sums, plus O(log N) time per variate to binary search.
+///
 template <typename IntType = int>
 class discrete_distribution {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = IntType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = discrete_distribution;
 
+    /// Constructs a parameter set with a single, certain outcome.
     param_type() { init(); }
 
+    /// Constructs a parameter set from a range of weights.
+    ///
+    /// @param begin An iterator to the first weight.
+    /// @param end An iterator past the last weight.
     template <typename InputIterator>
     explicit param_type(InputIterator begin, InputIterator end)
         : p_(begin, end) {
       init();
     }
 
+    /// Constructs a parameter set from a list of weights.
+    ///
+    /// @param weights The weights of the possible outcomes.
     explicit param_type(std::initializer_list<double> weights) : p_(weights) {
       init();
     }
 
+    /// Constructs a parameter set by sampling a weight function.
+    ///
+    /// @param nw The number of weights to generate.
+    /// @param xmin The lower bound of the sampled interval.
+    /// @param xmax The upper bound of the sampled interval.
+    /// @param fw The unary weight function to sample.
     template <class UnaryOperation>
     explicit param_type(size_t nw, double xmin, double xmax,
                         UnaryOperation fw) {
@@ -86,13 +103,29 @@ class discrete_distribution {
       init();
     }
 
+    /// Returns the normalized probabilities of the outcomes.
+    ///
+    /// @return The probability of each possible outcome.
     const std::vector<double>& probabilities() const { return p_; }
+    /// Returns the largest value the distribution can produce.
+    ///
+    /// @return The index of the last possible outcome.
     size_t n() const { return p_.size() - 1; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.probabilities() == b.probabilities();
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -110,52 +143,105 @@ class discrete_distribution {
                   "parameterized using an integral type.");
   };
 
+  /// Constructs a distribution with a single, certain outcome.
   discrete_distribution() : param_() {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit discrete_distribution(const param_type& p) : param_(p) {}
 
+  /// Constructs a distribution from a range of weights.
+  ///
+  /// @param begin An iterator to the first weight.
+  /// @param end An iterator past the last weight.
   template <typename InputIterator>
   explicit discrete_distribution(InputIterator begin, InputIterator end)
       : param_(begin, end) {}
 
+  /// Constructs a distribution from a list of weights.
+  ///
+  /// @param weights The weights of the possible outcomes.
   explicit discrete_distribution(std::initializer_list<double> weights)
       : param_(weights) {}
 
+  /// Constructs a distribution by sampling a weight function.
+  ///
+  /// @param nw The number of weights to generate.
+  /// @param xmin The lower bound of the sampled interval.
+  /// @param xmax The upper bound of the sampled interval.
+  /// @param fw The unary weight function to sample.
   template <class UnaryOperation>
   explicit discrete_distribution(size_t nw, double xmin, double xmax,
                                  UnaryOperation fw)
       : param_(nw, xmin, xmax, std::move(fw)) {}
 
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
-  // generating functions
+  /// Generates a random integer.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random integer distributed according to the parameter set.
   template <typename URBG>
   result_type operator()(URBG& g) {  // NOLINT(runtime/references)
     return (*this)(g, param_);
   }
 
+  /// Generates a random integer using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random integer distributed according to `p`.
   template <typename URBG>
   result_type operator()(URBG& g,  // NOLINT(runtime/references)
                          const param_type& p);
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   const param_type& param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param p The new parameter set.
   void param(const param_type& p) { param_ = p; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return `0`.
   result_type(min)() const { return 0; }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return The index of the last possible outcome, inclusive.
   result_type(max)() const {
     return static_cast<result_type>(param_.n());
   }  // inclusive
 
+  /// Returns the normalized probabilities of the outcomes.
+  ///
+  /// @return The probability of each possible outcome.
   // NOTE [rand.dist.sample.discrete] returns a std::vector<double> not a
   // const std::vector<double>&.
   const std::vector<double>& probabilities() const {
     return param_.probabilities();
   }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const discrete_distribution& a,
                          const discrete_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const discrete_distribution& a,
                          const discrete_distribution& b) {
     return a.param_ != b.param_;
@@ -204,6 +290,11 @@ discrete_distribution<IntType>::operator()(
   return selected ? idx : static_cast<result_type>(q.second);
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -219,6 +310,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,  // NOLINT(runtime/references)

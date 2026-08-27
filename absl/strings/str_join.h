@@ -89,26 +89,29 @@ ABSL_NAMESPACE_BEGIN
 // - `PairFormatter()`
 // - `DereferenceFormatter()`
 
-// AlphaNumFormatter()
-//
-// Default formatter used if none is specified. Uses `absl::AlphaNum` to convert
-// numeric arguments to strings.
+/// Default formatter used if none is specified. Uses `absl::AlphaNum` to
+/// convert numeric arguments to strings.
+///
+/// @return The default `AlphaNum`-based formatter.
 inline strings_internal::AlphaNumFormatterImpl AlphaNumFormatter() {
   return strings_internal::AlphaNumFormatterImpl();
 }
 
-// StreamFormatter()
-//
-// Formats its argument using the << operator.
+/// Formats its argument using the << operator.
+///
+/// @return A formatter that streams each element with `operator<<`.
 inline strings_internal::StreamFormatterImpl StreamFormatter() {
   return strings_internal::StreamFormatterImpl();
 }
 
-// Function Template: PairFormatter(Formatter, absl::string_view, Formatter)
-//
-// Formats a `std::pair` by putting a given separator between the pair's
-// `.first` and `.second` members. This formatter allows you to specify
-// custom Formatters for both the first and second member of each pair.
+/// Formats a `std::pair` by putting a given separator between the pair's
+/// `.first` and `.second` members. This formatter allows you to specify
+/// custom Formatters for both the first and second member of each pair.
+///
+/// @param f1 The formatter for the pair's `.first` member.
+/// @param sep The separator placed between the two members.
+/// @param f2 The formatter for the pair's `.second` member.
+/// @return A formatter for `std::pair` elements.
 template <typename FirstFormatter, typename SecondFormatter>
 inline strings_internal::PairFormatterImpl<FirstFormatter, SecondFormatter>
 PairFormatter(FirstFormatter f1, absl::string_view sep, SecondFormatter f2) {
@@ -116,8 +119,11 @@ PairFormatter(FirstFormatter f1, absl::string_view sep, SecondFormatter f2) {
       std::move(f1), sep, std::move(f2));
 }
 
-// Function overload of PairFormatter() for using a default
-// `AlphaNumFormatter()` for each Formatter in the pair.
+/// Function overload of PairFormatter() for using a default
+/// `AlphaNumFormatter()` for each Formatter in the pair.
+///
+/// @param sep The separator placed between the two members.
+/// @return A formatter for `std::pair` elements using the default formatter.
 inline strings_internal::PairFormatterImpl<
     strings_internal::AlphaNumFormatterImpl,
     strings_internal::AlphaNumFormatterImpl>
@@ -125,12 +131,13 @@ PairFormatter(absl::string_view sep) {
   return PairFormatter(AlphaNumFormatter(), sep, AlphaNumFormatter());
 }
 
-// Function Template: DereferenceFormatter(Formatter)
-//
-// Formats its argument by dereferencing it and then applying the given
-// formatter. This formatter is useful for formatting a container of
-// pointer-to-T. This pattern often shows up when joining repeated fields in
-// protocol buffers.
+/// Formats its argument by dereferencing it and then applying the given
+/// formatter. This formatter is useful for formatting a container of
+/// pointer-to-T. This pattern often shows up when joining repeated fields in
+/// protocol buffers.
+///
+/// @param f The formatter applied to the dereferenced element.
+/// @return A formatter that dereferences each element before formatting it.
 template <typename Formatter>
 strings_internal::DereferenceFormatterImpl<Formatter> DereferenceFormatter(
     Formatter&& f) {
@@ -138,8 +145,10 @@ strings_internal::DereferenceFormatterImpl<Formatter> DereferenceFormatter(
       std::forward<Formatter>(f));
 }
 
-// Function overload of `DereferenceFormatter()` for using a default
-// `AlphaNumFormatter()`.
+/// Function overload of `DereferenceFormatter()` for using a default
+/// `AlphaNumFormatter()`.
+///
+/// @return A dereferencing formatter using the default formatter.
 inline strings_internal::DereferenceFormatterImpl<
     strings_internal::AlphaNumFormatterImpl>
 DereferenceFormatter() {
@@ -147,106 +156,120 @@ DereferenceFormatter() {
       strings_internal::AlphaNumFormatterImpl>(AlphaNumFormatter());
 }
 
-// -----------------------------------------------------------------------------
-// StrJoin()
-// -----------------------------------------------------------------------------
-//
-// Joins a range of elements and returns the result as a std::string.
-// `absl::StrJoin()` takes a range, a separator string to use between the
-// elements joined, and an optional Formatter responsible for converting each
-// argument in the range to a string.
-//
-// If omitted, the default `AlphaNumFormatter()` is called on the elements to be
-// joined.
-//
-// Example 1:
-//   // Joins a collection of strings. This pattern also works with a collection
-//   // of `absl::string_view` or even `const char*`.
-//   std::vector<std::string> v = {"foo", "bar", "baz"};
-//   std::string s = absl::StrJoin(v, "-");
-//   EXPECT_EQ(s, "foo-bar-baz");
-//
-// Example 2:
-//   // Joins the values in the given `std::initializer_list<>` specified using
-//   // brace initialization. This pattern also works with an initializer_list
-//   // of ints or `absl::string_view` -- any `AlphaNum`-compatible type.
-//   std::string s = absl::StrJoin({"foo", "bar", "baz"}, "-");
-//   EXPECT_EQs, "foo-bar-baz");
-//
-// Example 3:
-//   // Joins a collection of ints. This pattern also works with floats,
-//   // doubles, int64s -- any `StrCat()`-compatible type.
-//   std::vector<int> v = {1, 2, 3, -4};
-//   std::string s = absl::StrJoin(v, "-");
-//   EXPECT_EQ(s, "1-2-3--4");
-//
-// Example 4:
-//   // Joins a collection of pointer-to-int. By default, pointers are
-//   // dereferenced and the pointee is formatted using the default format for
-//   // that type; such dereferencing occurs for all levels of indirection, so
-//   // this pattern works just as well for `std::vector<int**>` as for
-//   // `std::vector<int*>`.
-//   int x = 1, y = 2, z = 3;
-//   std::vector<int*> v = {&x, &y, &z};
-//   std::string s = absl::StrJoin(v, "-");
-//   EXPECT_EQ(s, "1-2-3");
-//
-// Example 5:
-//   // Dereferencing of `std::unique_ptr<>` is also supported:
-//   std::vector<std::unique_ptr<int>> v
-//   v.emplace_back(new int(1));
-//   v.emplace_back(new int(2));
-//   v.emplace_back(new int(3));
-//   std::string s = absl::StrJoin(v, "-");
-//   EXPECT_EQ(s, "1-2-3");
-//
-// Example 6:
-//   // Joins a `std::map`, with each key-value pair separated by an equals
-//   // sign. This pattern would also work with, say, a
-//   // `std::vector<std::pair<>>`.
-//   std::map<std::string, int> m = {
-//       {"a", 1},
-//       {"b", 2},
-//       {"c", 3}};
-//   std::string s = absl::StrJoin(m, ",", absl::PairFormatter("="));
-//   EXPECT_EQ(s, "a=1,b=2,c=3");
-//
-// Example 7:
-//   // These examples show how `absl::StrJoin()` handles a few common edge
-//   // cases:
-//   std::vector<std::string> v_empty;
-//   EXPECT_EQ(absl::StrJoin(v_empty, "-"), "");
-//
-//   std::vector<std::string> v_one_item = {"foo"};
-//   EXPECT_EQ(absl::StrJoin(v_one_item, "-"), "foo");
-//
-//   std::vector<std::string> v_empty_string = {""};
-//   EXPECT_EQ(absl::StrJoin(v_empty_string, "-"), "");
-//
-//   std::vector<std::string> v_one_item_empty_string = {"a", ""};
-//   EXPECT_EQ(absl::StrJoin(v_one_item_empty_string, "-"), "a-");
-//
-//   std::vector<std::string> v_two_empty_string = {"", ""};
-//   EXPECT_EQ(absl::StrJoin(v_two_empty_string, "-"), "-");
-//
-// Example 8:
-//   // Joins a `std::tuple<T...>` of heterogeneous types, converting each to
-//   // a std::string using the `absl::AlphaNum` class.
-//   std::string s = absl::StrJoin(std::make_tuple(123, "abc", 0.456), "-");
-//   EXPECT_EQ(s, "123-abc-0.456");
-
+/// Joins a range of elements and returns the result as a std::string.
+///
+/// `absl::StrJoin()` takes a range, a separator string to use between the
+/// elements joined, and an optional Formatter responsible for converting each
+/// argument in the range to a string.
+///
+/// If omitted, the default `AlphaNumFormatter()` is called on the elements to
+/// be joined.
+///
+/// Example 1:
+///   // Joins a collection of strings. This pattern also works with a collection
+///   // of `absl::string_view` or even `const char*`.
+///   std::vector<std::string> v = {"foo", "bar", "baz"};
+///   std::string s = absl::StrJoin(v, "-");
+///   EXPECT_EQ(s, "foo-bar-baz");
+///
+/// Example 2:
+///   // Joins the values in the given `std::initializer_list<>` specified using
+///   // brace initialization. This pattern also works with an initializer_list
+///   // of ints or `absl::string_view` -- any `AlphaNum`-compatible type.
+///   std::string s = absl::StrJoin({"foo", "bar", "baz"}, "-");
+///   EXPECT_EQs, "foo-bar-baz");
+///
+/// Example 3:
+///   // Joins a collection of ints. This pattern also works with floats,
+///   // doubles, int64s -- any `StrCat()`-compatible type.
+///   std::vector<int> v = {1, 2, 3, -4};
+///   std::string s = absl::StrJoin(v, "-");
+///   EXPECT_EQ(s, "1-2-3--4");
+///
+/// Example 4:
+///   // Joins a collection of pointer-to-int. By default, pointers are
+///   // dereferenced and the pointee is formatted using the default format for
+///   // that type; such dereferencing occurs for all levels of indirection, so
+///   // this pattern works just as well for `std::vector<int**>` as for
+///   // `std::vector<int*>`.
+///   int x = 1, y = 2, z = 3;
+///   std::vector<int*> v = {&x, &y, &z};
+///   std::string s = absl::StrJoin(v, "-");
+///   EXPECT_EQ(s, "1-2-3");
+///
+/// Example 5:
+///   // Dereferencing of `std::unique_ptr<>` is also supported:
+///   std::vector<std::unique_ptr<int>> v
+///   v.emplace_back(new int(1));
+///   v.emplace_back(new int(2));
+///   v.emplace_back(new int(3));
+///   std::string s = absl::StrJoin(v, "-");
+///   EXPECT_EQ(s, "1-2-3");
+///
+/// Example 6:
+///   // Joins a `std::map`, with each key-value pair separated by an equals
+///   // sign. This pattern would also work with, say, a
+///   // `std::vector<std::pair<>>`.
+///   std::map<std::string, int> m = {
+///       {"a", 1},
+///       {"b", 2},
+///       {"c", 3}};
+///   std::string s = absl::StrJoin(m, ",", absl::PairFormatter("="));
+///   EXPECT_EQ(s, "a=1,b=2,c=3");
+///
+/// Example 7:
+///   // These examples show how `absl::StrJoin()` handles a few common edge
+///   // cases:
+///   std::vector<std::string> v_empty;
+///   EXPECT_EQ(absl::StrJoin(v_empty, "-"), "");
+///
+///   std::vector<std::string> v_one_item = {"foo"};
+///   EXPECT_EQ(absl::StrJoin(v_one_item, "-"), "foo");
+///
+///   std::vector<std::string> v_empty_string = {""};
+///   EXPECT_EQ(absl::StrJoin(v_empty_string, "-"), "");
+///
+///   std::vector<std::string> v_one_item_empty_string = {"a", ""};
+///   EXPECT_EQ(absl::StrJoin(v_one_item_empty_string, "-"), "a-");
+///
+///   std::vector<std::string> v_two_empty_string = {"", ""};
+///   EXPECT_EQ(absl::StrJoin(v_two_empty_string, "-"), "-");
+///
+/// Example 8:
+///   // Joins a `std::tuple<T...>` of heterogeneous types, converting each to
+///   // a std::string using the `absl::AlphaNum` class.
+///   std::string s = absl::StrJoin(std::make_tuple(123, "abc", 0.456), "-");
+///   EXPECT_EQ(s, "123-abc-0.456");
+///
+/// @param start Iterator to the first element to join.
+/// @param end Iterator past the last element to join.
+/// @param sep The separator placed between joined elements.
+/// @param fmt The formatter used to convert each element to a string.
+/// @return The joined string.
 template <typename Iterator, typename Formatter>
 std::string StrJoin(Iterator start, Iterator end, absl::string_view sep,
                     Formatter&& fmt) {
   return strings_internal::JoinAlgorithm(start, end, sep, fmt);
 }
 
+/// Joins the elements of a range using a custom formatter.
+///
+/// @param range The range of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @param fmt The formatter used to convert each element to a string.
+/// @return The joined string.
 template <typename Range, typename Formatter>
 std::string StrJoin(const Range& range, absl::string_view separator,
                     Formatter&& fmt) {
   return strings_internal::JoinRange(range, separator, fmt);
 }
 
+/// Joins the elements of an initializer list using a custom formatter.
+///
+/// @param il The initializer list of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @param fmt The formatter used to convert each element to a string.
+/// @return The joined string.
 template <
     typename T, typename Formatter,
     typename = std::enable_if_t<!std::is_convertible_v<T, absl::string_view>>>
@@ -255,39 +278,77 @@ std::string StrJoin(std::initializer_list<T> il, absl::string_view separator,
   return strings_internal::JoinRange(il, separator, fmt);
 }
 
+/// Joins an initializer list of `string_view` using a custom formatter.
+///
+/// @param il The initializer list of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @param fmt The formatter used to convert each element to a string.
+/// @return The joined string.
 template <typename Formatter>
 inline std::string StrJoin(std::initializer_list<absl::string_view> il,
                            absl::string_view separator, Formatter&& fmt) {
   return strings_internal::JoinRange(il, separator, fmt);
 }
 
+/// Joins the elements of a `std::tuple` using a custom formatter.
+///
+/// @param value The tuple of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @param fmt The formatter used to convert each element to a string.
+/// @return The joined string.
 template <typename... T, typename Formatter>
 std::string StrJoin(const std::tuple<T...>& value, absl::string_view separator,
                     Formatter&& fmt) {
   return strings_internal::JoinAlgorithm(value, separator, fmt);
 }
 
+/// Joins a range of elements using the default formatter.
+///
+/// @param start Iterator to the first element to join.
+/// @param end Iterator past the last element to join.
+/// @param separator The separator placed between joined elements.
+/// @return The joined string.
 template <typename Iterator>
 std::string StrJoin(Iterator start, Iterator end, absl::string_view separator) {
   return strings_internal::JoinRange(start, end, separator);
 }
 
+/// Joins the elements of a range using the default formatter.
+///
+/// @param range The range of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @return The joined string.
 template <typename Range>
 std::string StrJoin(const Range& range, absl::string_view separator) {
   return strings_internal::JoinRange(range, separator);
 }
 
+/// Joins the elements of an initializer list using the default formatter.
+///
+/// @param il The initializer list of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @return The joined string.
 template <typename T, typename = std::enable_if_t<
                           !std::is_convertible_v<T, absl::string_view>>>
 std::string StrJoin(std::initializer_list<T> il, absl::string_view separator) {
   return strings_internal::JoinRange(il, separator);
 }
 
+/// Joins an initializer list of `string_view` using the default formatter.
+///
+/// @param il The initializer list of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @return The joined string.
 inline std::string StrJoin(std::initializer_list<absl::string_view> il,
                            absl::string_view separator) {
   return strings_internal::JoinRange(il, separator);
 }
 
+/// Joins the elements of a `std::tuple` using the default formatter.
+///
+/// @param value The tuple of elements to join.
+/// @param separator The separator placed between joined elements.
+/// @return The joined string.
 template <typename... T>
 std::string StrJoin(const std::tuple<T...>& value,
                     absl::string_view separator) {

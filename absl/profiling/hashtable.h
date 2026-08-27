@@ -23,9 +23,15 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 
+// Abseil's root namespace.
+//
+// Contains profiling utilities for hash tables.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// Serialize the current hash table profile into a string.
+///
+/// @return The marshalled profile, or an error status on failure.
 absl::StatusOr<std::string> MarshalHashtableProfile();
 
 namespace debugging_internal {

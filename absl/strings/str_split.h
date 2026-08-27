@@ -106,133 +106,164 @@ ABSL_NAMESPACE_BEGIN
 //     }
 //   };
 
-// ByString
-//
-// A sub-string delimiter. If `StrSplit()` is passed a string in place of a
-// `Delimiter` object, the string will be implicitly converted into a
-// `ByString` delimiter.
-//
-// Example:
-//
-//   // Because a string literal is converted to an `absl::ByString`,
-//   // the following two splits are equivalent.
-//
-//   std::vector<std::string> v1 = absl::StrSplit("a, b, c", ", ");
-//
-//   using absl::ByString;
-//   std::vector<std::string> v2 = absl::StrSplit("a, b, c",
-//                                                ByString(", "));
-//   // v[0] == "a", v[1] == "b", v[2] == "c"
+/// A sub-string delimiter.
+///
+/// If `StrSplit()` is passed a string in place of a `Delimiter` object, the
+/// string will be implicitly converted into a `ByString` delimiter.
+///
+/// Example:
+///
+///   // Because a string literal is converted to an `absl::ByString`,
+///   // the following two splits are equivalent.
+///
+///   std::vector<std::string> v1 = absl::StrSplit("a, b, c", ", ");
+///
+///   using absl::ByString;
+///   std::vector<std::string> v2 = absl::StrSplit("a, b, c",
+///                                                ByString(", "));
+///   // v[0] == "a", v[1] == "b", v[2] == "c"
 class ByString {
  public:
+  /// Constructs a `ByString` delimiter matching the sub-string `sp`.
+  ///
+  /// @param sp The sub-string to match as a delimiter.
   explicit ByString(absl::string_view sp);
+  /// Finds the next occurrence of the delimiter in `text` at or after `pos`.
+  ///
+  /// @param text The text to search.
+  /// @param pos The position to start searching from.
+  /// @return A view of the matched delimiter, or an empty trailing view.
   absl::string_view Find(absl::string_view text, size_t pos) const;
 
  private:
   std::string delimiter_;
 };
 
-// ByAsciiWhitespace
-//
-// A sub-string delimiter that splits by ASCII whitespace
-// (space, tab, vertical tab, formfeed, linefeed, or carriage return).
-// Note: you probably want to use absl::SkipEmpty() as well!
-//
-// This class is equivalent to ByAnyChar with ASCII whitespace chars.
-//
-// Example:
-//
-//   std::vector<std::string> v = absl::StrSplit(
-//       "a b\tc\n  d  \n", absl::ByAsciiWhitespace(), absl::SkipEmpty());
-//   // v[0] == "a", v[1] == "b", v[2] == "c", v[3] == "d"
+/// A sub-string delimiter that splits by ASCII whitespace
+/// (space, tab, vertical tab, formfeed, linefeed, or carriage return).
+///
+/// Note: you probably want to use absl::SkipEmpty() as well!
+///
+/// This class is equivalent to ByAnyChar with ASCII whitespace chars.
+///
+/// Example:
+///
+///   std::vector<std::string> v = absl::StrSplit(
+///       "a b\tc\n  d  \n", absl::ByAsciiWhitespace(), absl::SkipEmpty());
+///   // v[0] == "a", v[1] == "b", v[2] == "c", v[3] == "d"
 class ByAsciiWhitespace {
  public:
+  /// Finds the next run of ASCII whitespace in `text` at or after `pos`.
+  ///
+  /// @param text The text to search.
+  /// @param pos The position to start searching from.
+  /// @return A view of the matched delimiter, or an empty trailing view.
   absl::string_view Find(absl::string_view text, size_t pos) const;
 };
 
-// ByChar
-//
-// A single character delimiter. `ByChar` is functionally equivalent to a
-// 1-char string within a `ByString` delimiter, but slightly more efficient.
-//
-// Example:
-//
-//   // Because a char literal is converted to a absl::ByChar,
-//   // the following two splits are equivalent.
-//   std::vector<std::string> v1 = absl::StrSplit("a,b,c", ',');
-//   using absl::ByChar;
-//   std::vector<std::string> v2 = absl::StrSplit("a,b,c", ByChar(','));
-//   // v[0] == "a", v[1] == "b", v[2] == "c"
-//
-// `ByChar` is also the default delimiter if a single character is given
-// as the delimiter to `StrSplit()`. For example, the following calls are
-// equivalent:
-//
-//   std::vector<std::string> v = absl::StrSplit("a-b", '-');
-//
-//   using absl::ByChar;
-//   std::vector<std::string> v = absl::StrSplit("a-b", ByChar('-'));
-//
+/// A single character delimiter.
+///
+/// `ByChar` is functionally equivalent to a 1-char string within a `ByString`
+/// delimiter, but slightly more efficient.
+///
+/// Example:
+///
+///   // Because a char literal is converted to a absl::ByChar,
+///   // the following two splits are equivalent.
+///   std::vector<std::string> v1 = absl::StrSplit("a,b,c", ',');
+///   using absl::ByChar;
+///   std::vector<std::string> v2 = absl::StrSplit("a,b,c", ByChar(','));
+///   // v[0] == "a", v[1] == "b", v[2] == "c"
+///
+/// `ByChar` is also the default delimiter if a single character is given
+/// as the delimiter to `StrSplit()`. For example, the following calls are
+/// equivalent:
+///
+///   std::vector<std::string> v = absl::StrSplit("a-b", '-');
+///
+///   using absl::ByChar;
+///   std::vector<std::string> v = absl::StrSplit("a-b", ByChar('-'));
+///
 class ByChar {
  public:
+  /// Constructs a `ByChar` delimiter matching the character `c`.
+  ///
+  /// @param c The character to match as a delimiter.
   explicit ByChar(char c) : c_(c) {}
+  /// Finds the next occurrence of the delimiter in `text` at or after `pos`.
+  ///
+  /// @param text The text to search.
+  /// @param pos The position to start searching from.
+  /// @return A view of the matched delimiter, or an empty trailing view.
   absl::string_view Find(absl::string_view text, size_t pos) const;
 
  private:
   char c_;
 };
 
-// ByAnyChar
-//
-// A delimiter that will match any of the given byte-sized characters within
-// its provided string.
-//
-// Note: this delimiter works with single-byte string data, but does not work
-// with variable-width encodings, such as UTF-8.
-//
-// Example:
-//
-//   using absl::ByAnyChar;
-//   std::vector<std::string> v = absl::StrSplit("a,b=c", ByAnyChar(",="));
-//   // v[0] == "a", v[1] == "b", v[2] == "c"
-//
-// If `ByAnyChar` is given the empty string, it behaves exactly like
-// `ByString` and matches each individual character in the input string.
-//
+/// A delimiter that will match any of the given byte-sized characters within
+/// its provided string.
+///
+/// Note: this delimiter works with single-byte string data, but does not work
+/// with variable-width encodings, such as UTF-8.
+///
+/// Example:
+///
+///   using absl::ByAnyChar;
+///   std::vector<std::string> v = absl::StrSplit("a,b=c", ByAnyChar(",="));
+///   // v[0] == "a", v[1] == "b", v[2] == "c"
+///
+/// If `ByAnyChar` is given the empty string, it behaves exactly like
+/// `ByString` and matches each individual character in the input string.
+///
 class ByAnyChar {
  public:
+  /// Constructs a `ByAnyChar` delimiter matching any character in `sp`.
+  ///
+  /// @param sp The set of characters to match as delimiters.
   explicit ByAnyChar(absl::string_view sp);
+  /// Finds the next matching character in `text` at or after `pos`.
+  ///
+  /// @param text The text to search.
+  /// @param pos The position to start searching from.
+  /// @return A view of the matched delimiter, or an empty trailing view.
   absl::string_view Find(absl::string_view text, size_t pos) const;
 
  private:
   const std::string delimiters_;
 };
 
-// ByLength
-//
-// A delimiter for splitting into equal-length strings. The length argument to
-// the constructor must be greater than 0.
-//
-// Note: this delimiter works with single-byte string data, but does not work
-// with variable-width encodings, such as UTF-8.
-//
-// Example:
-//
-//   using absl::ByLength;
-//   std::vector<std::string> v = absl::StrSplit("123456789", ByLength(3));
-
-//   // v[0] == "123", v[1] == "456", v[2] == "789"
-//
-// Note that the string does not have to be a multiple of the fixed split
-// length. In such a case, the last substring will be shorter.
-//
-//   using absl::ByLength;
-//   std::vector<std::string> v = absl::StrSplit("12345", ByLength(2));
-//
-//   // v[0] == "12", v[1] == "34", v[2] == "5"
+/// A delimiter for splitting into equal-length strings.
+///
+/// The length argument to the constructor must be greater than 0.
+///
+/// Note: this delimiter works with single-byte string data, but does not work
+/// with variable-width encodings, such as UTF-8.
+///
+/// Example:
+///
+///   using absl::ByLength;
+///   std::vector<std::string> v = absl::StrSplit("123456789", ByLength(3));
+///   // v[0] == "123", v[1] == "456", v[2] == "789"
+///
+/// Note that the string does not have to be a multiple of the fixed split
+/// length. In such a case, the last substring will be shorter.
+///
+///   using absl::ByLength;
+///   std::vector<std::string> v = absl::StrSplit("12345", ByLength(2));
+///
+///   // v[0] == "12", v[1] == "34", v[2] == "5"
 class ByLength {
  public:
+  /// Constructs a `ByLength` delimiter that splits every `length` characters.
+  ///
+  /// @param length The fixed length of each split; must be greater than 0.
   explicit ByLength(ptrdiff_t length);
+  /// Finds the next split point in `text` at or after `pos`.
+  ///
+  /// @param text The text to search.
+  /// @param pos The position to start searching from.
+  /// @return A view of the matched delimiter, or an empty trailing view.
   absl::string_view Find(absl::string_view text, size_t pos) const;
 
  private:
@@ -296,18 +327,22 @@ class MaxSplitsImpl {
 
 }  // namespace strings_internal
 
-// MaxSplits()
-//
-// A delimiter that limits the number of matches which can occur to the passed
-// `limit`. The last element in the returned collection will contain all
-// remaining unsplit pieces, which may contain instances of the delimiter.
-// The collection will contain at most `limit` + 1 elements.
-// Example:
-//
-//   using absl::MaxSplits;
-//   std::vector<std::string> v = absl::StrSplit("a,b,c", MaxSplits(',', 1));
-//
-//   // v[0] == "a", v[1] == "b,c"
+/// A delimiter that limits the number of matches which can occur to the passed
+/// `limit`.
+///
+/// The last element in the returned collection will contain all remaining
+/// unsplit pieces, which may contain instances of the delimiter.
+/// The collection will contain at most `limit` + 1 elements.
+/// Example:
+///
+///   using absl::MaxSplits;
+///   std::vector<std::string> v = absl::StrSplit("a,b,c", MaxSplits(',', 1));
+///
+///   // v[0] == "a", v[1] == "b,c"
+///
+/// @param delimiter The underlying delimiter whose matches are limited.
+/// @param limit The maximum number of matches allowed.
+/// @return A delimiter wrapping `delimiter` with the given match limit.
 template <typename Delimiter>
 inline strings_internal::MaxSplitsImpl<
     typename strings_internal::SelectDelimiter<Delimiter>::type>
@@ -334,61 +369,70 @@ MaxSplits(Delimiter delimiter, int limit) {
 // substrings may be returned by `StrSplit()`, which is similar to the way split
 // functions work in other programming languages.
 
-// AllowEmpty()
-//
-// Always returns `true`, indicating that all strings--including empty
-// strings--should be included in the split output. This predicate is not
-// strictly needed because this is the default behavior of `StrSplit()`;
-// however, it might be useful at some call sites to make the intent explicit.
-//
-// Example:
-//
-//  std::vector<std::string> v = absl::StrSplit(" a , ,,b,", ',', AllowEmpty());
-//
-//  // v[0] == " a ", v[1] == " ", v[2] == "", v[3] = "b", v[4] == ""
+/// Always returns `true`, indicating that all strings--including empty
+/// strings--should be included in the split output.
+///
+/// This predicate is not strictly needed because this is the default behavior
+/// of `StrSplit()`; however, it might be useful at some call sites to make the
+/// intent explicit.
+///
+/// Example:
+///
+///  std::vector<std::string> v = absl::StrSplit(" a , ,,b,", ',', AllowEmpty());
+///
+///  // v[0] == " a ", v[1] == " ", v[2] == "", v[3] = "b", v[4] == ""
 struct AllowEmpty {
-  bool operator()(absl::string_view) const { return true; }
+  /// Returns `true` for any substring, including empty ones.
+  ///
+  /// @param text The substring to test.
+  /// @return Always `true`.
+  bool operator()(absl::string_view text) const { return true; }
 };
 
-// SkipEmpty()
-//
-// Returns `false` if the given `absl::string_view` is empty, indicating that
-// `StrSplit()` should omit the empty string.
-//
-// Example:
-//
-//   std::vector<std::string> v = absl::StrSplit(",a,,b,", ',', SkipEmpty());
-//
-//   // v[0] == "a", v[1] == "b"
-//
-// Note: `SkipEmpty()` does not consider a string containing only whitespace
-// to be empty. To skip such whitespace as well, use the `SkipWhitespace()`
-// predicate.
+/// Returns `false` if the given `absl::string_view` is empty, indicating that
+/// `StrSplit()` should omit the empty string.
+///
+/// Example:
+///
+///   std::vector<std::string> v = absl::StrSplit(",a,,b,", ',', SkipEmpty());
+///
+///   // v[0] == "a", v[1] == "b"
+///
+/// Note: `SkipEmpty()` does not consider a string containing only whitespace
+/// to be empty. To skip such whitespace as well, use the `SkipWhitespace()`
+/// predicate.
 struct SkipEmpty {
+  /// Returns `true` if `sp` is non-empty.
+  ///
+  /// @param sp The substring to test.
+  /// @return `true` if `sp` is not empty, `false` otherwise.
   bool operator()(absl::string_view sp) const { return !sp.empty(); }
 };
 
-// SkipWhitespace()
-//
-// Returns `false` if the given `absl::string_view` is empty *or* contains only
-// whitespace, indicating that `StrSplit()` should omit the string.
-//
-// Example:
-//
-//   std::vector<std::string> v = absl::StrSplit(" a , ,,b,",
-//                                               ',', SkipWhitespace());
-//   // v[0] == " a ", v[1] == "b"
-//
-//   // SkipEmpty() would return whitespace elements
-//   std::vector<std::string> v = absl::StrSplit(" a , ,,b,", ',', SkipEmpty());
-//   // v[0] == " a ", v[1] == " ", v[2] == "b"
+/// Returns `false` if the given `absl::string_view` is empty *or* contains only
+/// whitespace, indicating that `StrSplit()` should omit the string.
+///
+/// Example:
+///
+///   std::vector<std::string> v = absl::StrSplit(" a , ,,b,",
+///                                               ',', SkipWhitespace());
+///   // v[0] == " a ", v[1] == "b"
+///
+///   // SkipEmpty() would return whitespace elements
+///   std::vector<std::string> v = absl::StrSplit(" a , ,,b,", ',', SkipEmpty());
+///   // v[0] == " a ", v[1] == " ", v[2] == "b"
 struct SkipWhitespace {
+  /// Returns `true` if `sp` contains a non-whitespace character.
+  ///
+  /// @param sp The substring to test.
+  /// @return `true` if `sp` is neither empty nor all whitespace.
   bool operator()(absl::string_view sp) const {
     sp = absl::StripLeadingAsciiWhitespace(sp);
     return !sp.empty();
   }
 };
 
+/// Enables a `StrSplit()` overload only when `T` is `std::string`.
 template <typename T>
 using EnableSplitIfString =
     std::enable_if_t<std::is_same_v<T, std::string> ||
@@ -399,141 +443,143 @@ using EnableSplitIfString =
 //                                  StrSplit()
 //------------------------------------------------------------------------------
 
-// StrSplit()
-//
-// Splits a string into a sequence of substrings identified by `Delimiter`. The
-// input is processed sequentially from beginning to end, and each resulting
-// substring is filtered by an optional `Predicate` before inclusion in the
-// result set. `StrSplit()` returns a lazy range that preserves the substrings
-// original order and is convertible to the collection type specified by the
-// caller.
-//
-// Optionally, you may pass a `Predicate` to `StrSplit()` indicating whether to
-// include or exclude the resulting element within the final result set. (See
-// the overviews for Delimiters and Predicates above.)
-//
-// Example:
-//
-//   std::vector<std::string> v = absl::StrSplit("a,b,c,d", ',');
-//   // v[0] == "a", v[1] == "b", v[2] == "c", v[3] == "d"
-//
-// You can also provide an explicit `Delimiter` object:
-//
-// Example:
-//
-//   using absl::ByAnyChar;
-//   std::vector<std::string> v = absl::StrSplit("a,b=c", ByAnyChar(",="));
-//   // v[0] == "a", v[1] == "b", v[2] == "c"
-//
-// See above for more information on delimiters.
-//
-// By default, empty strings are included in the result set. You can optionally
-// include a third `Predicate` argument to apply a test for whether the
-// resultant element should be included in the result set:
-//
-// Example:
-//
-//   std::vector<std::string> v = absl::StrSplit(" a , ,,b,",
-//                                               ',', SkipWhitespace());
-//   // v[0] == " a ", v[1] == "b"
-//
-// See above for more information on predicates.
-//
-//------------------------------------------------------------------------------
-// StrSplit() Return Types
-//------------------------------------------------------------------------------
-//
-// The `StrSplit()` function adapts the returned collection to the collection
-// specified by the caller (e.g. `std::vector` above). The returned collections
-// may contain `std::string`, `absl::string_view` (in which case the original
-// string being split must ensure that it outlives the collection), or any
-// object that can be explicitly created from an `absl::string_view`. This
-// behavior works for:
-//
-// 1) All standard STL containers including `std::vector`, `std::list`,
-//    `std::deque`, `std::set`,`std::multiset`, 'std::map`, and `std::multimap`.
-// 2) `std::pair` (which is not actually a container). See below.
-// 3) `std::array`, which is a container but has different behavior due to its
-//    fixed size. See below.
-//
-// Example:
-//
-//   // The results are returned as `absl::string_view` objects. Note that we
-//   // have to ensure that the input string outlives any results.
-//   std::vector<absl::string_view> v = absl::StrSplit("a,b,c", ',');
-//
-//   // Stores results in a std::set<std::string>, which also performs
-//   // de-duplication and orders the elements in ascending order.
-//   std::set<std::string> a = absl::StrSplit("b,a,c,a,b", ',');
-//   // a[0] == "a", a[1] == "b", a[2] == "c"
-//
-//   // `StrSplit()` can be used within a range-based for loop, in which case
-//   // each element will be of type `absl::string_view`.
-//   std::vector<std::string> v;
-//   for (const auto sv : absl::StrSplit("a,b,c", ',')) {
-//     if (sv != "b") v.emplace_back(sv);
-//   }
-//   // v[0] == "a", v[1] == "c"
-//
-//   // Stores results in a map. The map implementation assumes that the input
-//   // is provided as a series of key/value pairs. For example, the 0th element
-//   // resulting from the split will be stored as a key to the 1st element. If
-//   // an odd number of elements are resolved, the last element is paired with
-//   // a default-constructed value (e.g., empty string).
-//   std::map<std::string, std::string> m = absl::StrSplit("a,b,c", ',');
-//   // m["a"] == "b", m["c"] == ""     // last component value equals ""
-//
-// Splitting to `std::pair` is an interesting case because it can hold only two
-// elements and is not a collection type. When splitting to a `std::pair` the
-// first two split strings become the `std::pair` `.first` and `.second`
-// members, respectively. The remaining split substrings are discarded. If there
-// are less than two split substrings, the empty string is used for the
-// corresponding `std::pair` member.
-//
-// Example:
-//
-//   // Stores first two split strings as the members in a std::pair.
-//   std::pair<std::string, std::string> p = absl::StrSplit("a,b,c", ',');
-//   // p.first == "a", p.second == "b"       // "c" is omitted.
-//
-//
-// Splitting to `std::array` is similar to splitting to `std::pair`, but for
-// N elements instead of two; missing elements are filled with the empty string
-// and extra elements are discarded.
-//
-// Examples:
-//
-//   // Stores first two split strings as the elements in a std::array.
-//   std::array<std::string, 2> a = absl::StrSplit("a,b,c", ',');
-//   // a[0] == "a", a[1] == "b"   // "c" is omitted.
-//
-//   // The second element is empty.
-//   std::array<std::string, 2> a = absl::StrSplit("a,", ',');
-//   // a[0] == "a", a[1] == ""
-//
-// The `StrSplit()` function can be used multiple times to perform more
-// complicated splitting logic, such as intelligently parsing key-value pairs.
-//
-// Example:
-//
-//   // The input string "a=b=c,d=e,f=,g" becomes
-//   // { "a" => "b=c", "d" => "e", "f" => "", "g" => "" }
-//   std::map<std::string, std::string> m;
-//   for (absl::string_view sp : absl::StrSplit("a=b=c,d=e,f=,g", ',')) {
-//     m.insert(absl::StrSplit(sp, absl::MaxSplits('=', 1)));
-//   }
-//   EXPECT_EQ("b=c", m.find("a")->second);
-//   EXPECT_EQ("e", m.find("d")->second);
-//   EXPECT_EQ("", m.find("f")->second);
-//   EXPECT_EQ("", m.find("g")->second);
-//
-// WARNING: Due to a legacy bug that is maintained for backward compatibility,
-// splitting the following empty string_views produces different results:
-//
-//   absl::StrSplit(absl::string_view(""), '-');  // {""}
-//   absl::StrSplit(absl::string_view(), '-');    // {}, but should be {""}
-//
-// Try not to depend on this distinction because the bug may one day be fixed.
+/// Splits a string into a sequence of substrings identified by `Delimiter`. The
+/// input is processed sequentially from beginning to end, and each resulting
+/// substring is filtered by an optional `Predicate` before inclusion in the
+/// result set. `StrSplit()` returns a lazy range that preserves the substrings
+/// original order and is convertible to the collection type specified by the
+/// caller.
+///
+/// Optionally, you may pass a `Predicate` to `StrSplit()` indicating whether to
+/// include or exclude the resulting element within the final result set. (See
+/// the overviews for Delimiters and Predicates above.)
+///
+/// Example:
+///
+///   std::vector<std::string> v = absl::StrSplit("a,b,c,d", ',');
+///   // v[0] == "a", v[1] == "b", v[2] == "c", v[3] == "d"
+///
+/// You can also provide an explicit `Delimiter` object:
+///
+/// Example:
+///
+///   using absl::ByAnyChar;
+///   std::vector<std::string> v = absl::StrSplit("a,b=c", ByAnyChar(",="));
+///   // v[0] == "a", v[1] == "b", v[2] == "c"
+///
+/// See above for more information on delimiters.
+///
+/// By default, empty strings are included in the result set. You can optionally
+/// include a third `Predicate` argument to apply a test for whether the
+/// resultant element should be included in the result set:
+///
+/// Example:
+///
+///   std::vector<std::string> v = absl::StrSplit(" a , ,,b,",
+///                                               ',', SkipWhitespace());
+///   // v[0] == " a ", v[1] == "b"
+///
+/// See above for more information on predicates.
+///
+///------------------------------------------------------------------------------
+/// StrSplit() Return Types
+///------------------------------------------------------------------------------
+///
+/// The `StrSplit()` function adapts the returned collection to the collection
+/// specified by the caller (e.g. `std::vector` above). The returned collections
+/// may contain `std::string`, `absl::string_view` (in which case the original
+/// string being split must ensure that it outlives the collection), or any
+/// object that can be explicitly created from an `absl::string_view`. This
+/// behavior works for:
+///
+/// 1) All standard STL containers including `std::vector`, `std::list`,
+///    `std::deque`, `std::set`,`std::multiset`, 'std::map`, and `std::multimap`.
+/// 2) `std::pair` (which is not actually a container). See below.
+/// 3) `std::array`, which is a container but has different behavior due to its
+///    fixed size. See below.
+///
+/// Example:
+///
+///   // The results are returned as `absl::string_view` objects. Note that we
+///   // have to ensure that the input string outlives any results.
+///   std::vector<absl::string_view> v = absl::StrSplit("a,b,c", ',');
+///
+///   // Stores results in a std::set<std::string>, which also performs
+///   // de-duplication and orders the elements in ascending order.
+///   std::set<std::string> a = absl::StrSplit("b,a,c,a,b", ',');
+///   // a[0] == "a", a[1] == "b", a[2] == "c"
+///
+///   // `StrSplit()` can be used within a range-based for loop, in which case
+///   // each element will be of type `absl::string_view`.
+///   std::vector<std::string> v;
+///   for (const auto sv : absl::StrSplit("a,b,c", ',')) {
+///     if (sv != "b") v.emplace_back(sv);
+///   }
+///   // v[0] == "a", v[1] == "c"
+///
+///   // Stores results in a map. The map implementation assumes that the input
+///   // is provided as a series of key/value pairs. For example, the 0th element
+///   // resulting from the split will be stored as a key to the 1st element. If
+///   // an odd number of elements are resolved, the last element is paired with
+///   // a default-constructed value (e.g., empty string).
+///   std::map<std::string, std::string> m = absl::StrSplit("a,b,c", ',');
+///   // m["a"] == "b", m["c"] == ""     // last component value equals ""
+///
+/// Splitting to `std::pair` is an interesting case because it can hold only two
+/// elements and is not a collection type. When splitting to a `std::pair` the
+/// first two split strings become the `std::pair` `.first` and `.second`
+/// members, respectively. The remaining split substrings are discarded. If there
+/// are less than two split substrings, the empty string is used for the
+/// corresponding `std::pair` member.
+///
+/// Example:
+///
+///   // Stores first two split strings as the members in a std::pair.
+///   std::pair<std::string, std::string> p = absl::StrSplit("a,b,c", ',');
+///   // p.first == "a", p.second == "b"       // "c" is omitted.
+///
+///
+/// Splitting to `std::array` is similar to splitting to `std::pair`, but for
+/// N elements instead of two; missing elements are filled with the empty string
+/// and extra elements are discarded.
+///
+/// Examples:
+///
+///   // Stores first two split strings as the elements in a std::array.
+///   std::array<std::string, 2> a = absl::StrSplit("a,b,c", ',');
+///   // a[0] == "a", a[1] == "b"   // "c" is omitted.
+///
+///   // The second element is empty.
+///   std::array<std::string, 2> a = absl::StrSplit("a,", ',');
+///   // a[0] == "a", a[1] == ""
+///
+/// The `StrSplit()` function can be used multiple times to perform more
+/// complicated splitting logic, such as intelligently parsing key-value pairs.
+///
+/// Example:
+///
+///   // The input string "a=b=c,d=e,f=,g" becomes
+///   // { "a" => "b=c", "d" => "e", "f" => "", "g" => "" }
+///   std::map<std::string, std::string> m;
+///   for (absl::string_view sp : absl::StrSplit("a=b=c,d=e,f=,g", ',')) {
+///     m.insert(absl::StrSplit(sp, absl::MaxSplits('=', 1)));
+///   }
+///   EXPECT_EQ("b=c", m.find("a")->second);
+///   EXPECT_EQ("e", m.find("d")->second);
+///   EXPECT_EQ("", m.find("f")->second);
+///   EXPECT_EQ("", m.find("g")->second);
+///
+/// WARNING: Due to a legacy bug that is maintained for backward compatibility,
+/// splitting the following empty string_views produces different results:
+///
+///   absl::StrSplit(absl::string_view(""), '-');  // {""}
+///   absl::StrSplit(absl::string_view(), '-');    // {}, but should be {""}
+///
+/// Try not to depend on this distinction because the bug may one day be fixed.
+///
+/// @param text The string to split.
+/// @param d The delimiter identifying the split points.
+/// @return A lazy range of substrings convertible to the caller's collection.
 template <typename Delimiter>
 strings_internal::Splitter<
     typename strings_internal::SelectDelimiter<Delimiter>::type, AllowEmpty,
@@ -546,6 +592,11 @@ StrSplit(strings_internal::ConvertibleToStringView text, Delimiter d) {
       text.value(), DelimiterType(d), AllowEmpty());
 }
 
+/// Overload of `StrSplit()` that takes ownership of a `std::string` input.
+///
+/// @param text The string to split; ownership is transferred to the result.
+/// @param d The delimiter identifying the split points.
+/// @return A lazy range of substrings convertible to the caller's collection.
 template <typename Delimiter, typename StringType,
           EnableSplitIfString<StringType> = 0>
 strings_internal::Splitter<
@@ -558,6 +609,12 @@ StrSplit(StringType&& text, Delimiter d) {
       std::move(text), DelimiterType(d), AllowEmpty());
 }
 
+/// Overload of `StrSplit()` that filters substrings with a `Predicate`.
+///
+/// @param text The string to split.
+/// @param d The delimiter identifying the split points.
+/// @param p The predicate that decides whether a substring is included.
+/// @return A lazy range of the retained substrings.
 template <typename Delimiter, typename Predicate>
 strings_internal::Splitter<
     typename strings_internal::SelectDelimiter<Delimiter>::type, Predicate,
@@ -571,6 +628,13 @@ StrSplit(strings_internal::ConvertibleToStringView text, Delimiter d,
       text.value(), DelimiterType(std::move(d)), std::move(p));
 }
 
+/// Overload of `StrSplit()` that takes ownership of a `std::string` input and
+/// filters substrings with a `Predicate`.
+///
+/// @param text The string to split; ownership is transferred to the result.
+/// @param d The delimiter identifying the split points.
+/// @param p The predicate that decides whether a substring is included.
+/// @return A lazy range of the retained substrings.
 template <typename Delimiter, typename Predicate, typename StringType,
           EnableSplitIfString<StringType> = 0>
 strings_internal::Splitter<

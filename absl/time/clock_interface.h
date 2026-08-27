@@ -28,60 +28,74 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// An abstract interface representing a Clock, which is an object that can
-// tell you the current time, sleep, and wait for a condition variable.
-//
-// This interface allows decoupling code that uses time from the code that
-// creates a point in time.  You can use this to your advantage by injecting
-// Clocks into interfaces rather than having implementations call absl::Now()
-// directly.
-//
-// Implementations of this interface must be thread-safe.
-//
-// The Clock::GetRealClock() function returns a reference to the global realtime
-// clock.
-//
-// Example:
-//
-//   bool IsWeekend(Clock& clock) {
-//     absl::Time now = clock.TimeNow();
-//     // ... code to check if 'now' is a weekend.
-//   }
-//
-//   // Production code.
-//   IsWeekend(Clock::GetRealClock());
-//
-//   // Test code:
-//   MyTestClock test_clock(SATURDAY);
-//   IsWeekend(test_clock);
-//
+/// An abstract interface representing a Clock, which is an object that can
+/// tell you the current time, sleep, and wait for a condition variable.
+///
+/// This interface allows decoupling code that uses time from the code that
+/// creates a point in time.  You can use this to your advantage by injecting
+/// Clocks into interfaces rather than having implementations call absl::Now()
+/// directly.
+///
+/// Implementations of this interface must be thread-safe.
+///
+/// The Clock::GetRealClock() function returns a reference to the global realtime
+/// clock.
+///
+/// Example:
+///
+///   bool IsWeekend(Clock& clock) {
+///     absl::Time now = clock.TimeNow();
+///     // ... code to check if 'now' is a weekend.
+///   }
+///
+///   // Production code.
+///   IsWeekend(Clock::GetRealClock());
+///
+///   // Test code:
+///   MyTestClock test_clock(SATURDAY);
+///   IsWeekend(test_clock);
+///
 class Clock {
  public:
-  // Returns a reference to the global realtime clock.
-  // The returned clock is thread-safe.
+  /// Returns a reference to the global realtime clock.
+  /// The returned clock is thread-safe.
+  ///
+  /// @return A reference to the global realtime clock.
   static Clock& GetRealClock();
 
+  /// Destroys the clock.
   virtual ~Clock();
 
-  // Returns the current time.
+  /// Returns the current time.
+  ///
+  /// @return The current time.
   virtual absl::Time TimeNow() = 0;
 
-  // Sleeps for the specified duration.
+  /// Sleeps for the specified duration.
+  ///
+  /// @param d The length of time to sleep.
   virtual void Sleep(absl::Duration d) = 0;
 
-  // Sleeps until the specified time.
+  /// Sleeps until the specified time.
+  ///
+  /// @param wakeup_time The time at which to wake up.
   virtual void SleepUntil(absl::Time wakeup_time) = 0;
 
-  // Returns when cond is true or the deadline has passed.  Returns true iff
-  // cond holds when returning.
-  //
-  // Requires *mu to be held at least in shared mode.  It will be held when
-  // evaluating cond, and upon return, but it may be released and reacquired
-  // in the meantime.
-  //
-  // This method is similar to mu->AwaitWithDeadline() except that the
-  // latter only works with real-time deadlines.  This call works properly
-  // with simulated time if invoked on a simulated clock.
+  /// Returns when cond is true or the deadline has passed.  Returns true iff
+  /// cond holds when returning.
+  ///
+  /// Requires *mu to be held at least in shared mode.  It will be held when
+  /// evaluating cond, and upon return, but it may be released and reacquired
+  /// in the meantime.
+  ///
+  /// This method is similar to mu->AwaitWithDeadline() except that the
+  /// latter only works with real-time deadlines.  This call works properly
+  /// with simulated time if invoked on a simulated clock.
+  ///
+  /// @param mu The mutex guarding `cond`, held at least in shared mode.
+  /// @param cond The condition to wait on.
+  /// @param deadline The time by which to stop waiting.
+  /// @return `true` iff `cond` holds when returning.
   virtual bool AwaitWithDeadline(absl::Mutex* absl_nonnull mu,
                                  const absl::Condition& cond,
                                  absl::Time deadline) = 0;

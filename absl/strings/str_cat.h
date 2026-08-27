@@ -138,88 +138,110 @@ struct AlphaNumBuffer {
 
 }  // namespace strings_internal
 
-// Enum that specifies the number of significant digits to return in a `Hex` or
-// `Dec` conversion and fill character to use. A `kZeroPad2` value, for example,
-// would produce hexadecimal strings such as "0a","0f" and a 'kSpacePad5' value
-// would produce hexadecimal strings such as "    a","    f".
+/// Specifies the number of significant digits to return in a `Hex` or
+/// `Dec` conversion and the fill character to use.
+///
+/// A `kZeroPad2` value, for example, would produce hexadecimal strings such as
+/// "0a","0f" and a 'kSpacePad5' value would produce hexadecimal strings such as
+/// "    a","    f".
 enum PadSpec : uint8_t {
-  kNoPad = 1,
-  kZeroPad2,
-  kZeroPad3,
-  kZeroPad4,
-  kZeroPad5,
-  kZeroPad6,
-  kZeroPad7,
-  kZeroPad8,
-  kZeroPad9,
-  kZeroPad10,
-  kZeroPad11,
-  kZeroPad12,
-  kZeroPad13,
-  kZeroPad14,
-  kZeroPad15,
-  kZeroPad16,
-  kZeroPad17,
-  kZeroPad18,
-  kZeroPad19,
-  kZeroPad20,
+  kNoPad = 1,   ///< No padding.
+  kZeroPad2,    ///< Pad with zeros to a minimum width of 2.
+  kZeroPad3,    ///< Pad with zeros to a minimum width of 3.
+  kZeroPad4,    ///< Pad with zeros to a minimum width of 4.
+  kZeroPad5,    ///< Pad with zeros to a minimum width of 5.
+  kZeroPad6,    ///< Pad with zeros to a minimum width of 6.
+  kZeroPad7,    ///< Pad with zeros to a minimum width of 7.
+  kZeroPad8,    ///< Pad with zeros to a minimum width of 8.
+  kZeroPad9,    ///< Pad with zeros to a minimum width of 9.
+  kZeroPad10,   ///< Pad with zeros to a minimum width of 10.
+  kZeroPad11,   ///< Pad with zeros to a minimum width of 11.
+  kZeroPad12,   ///< Pad with zeros to a minimum width of 12.
+  kZeroPad13,   ///< Pad with zeros to a minimum width of 13.
+  kZeroPad14,   ///< Pad with zeros to a minimum width of 14.
+  kZeroPad15,   ///< Pad with zeros to a minimum width of 15.
+  kZeroPad16,   ///< Pad with zeros to a minimum width of 16.
+  kZeroPad17,   ///< Pad with zeros to a minimum width of 17.
+  kZeroPad18,   ///< Pad with zeros to a minimum width of 18.
+  kZeroPad19,   ///< Pad with zeros to a minimum width of 19.
+  kZeroPad20,   ///< Pad with zeros to a minimum width of 20.
 
-  kSpacePad2 = kZeroPad2 + 64,
-  kSpacePad3,
-  kSpacePad4,
-  kSpacePad5,
-  kSpacePad6,
-  kSpacePad7,
-  kSpacePad8,
-  kSpacePad9,
-  kSpacePad10,
-  kSpacePad11,
-  kSpacePad12,
-  kSpacePad13,
-  kSpacePad14,
-  kSpacePad15,
-  kSpacePad16,
-  kSpacePad17,
-  kSpacePad18,
-  kSpacePad19,
-  kSpacePad20,
+  kSpacePad2 = kZeroPad2 + 64,  ///< Pad with spaces to a minimum width of 2.
+  kSpacePad3,   ///< Pad with spaces to a minimum width of 3.
+  kSpacePad4,   ///< Pad with spaces to a minimum width of 4.
+  kSpacePad5,   ///< Pad with spaces to a minimum width of 5.
+  kSpacePad6,   ///< Pad with spaces to a minimum width of 6.
+  kSpacePad7,   ///< Pad with spaces to a minimum width of 7.
+  kSpacePad8,   ///< Pad with spaces to a minimum width of 8.
+  kSpacePad9,   ///< Pad with spaces to a minimum width of 9.
+  kSpacePad10,  ///< Pad with spaces to a minimum width of 10.
+  kSpacePad11,  ///< Pad with spaces to a minimum width of 11.
+  kSpacePad12,  ///< Pad with spaces to a minimum width of 12.
+  kSpacePad13,  ///< Pad with spaces to a minimum width of 13.
+  kSpacePad14,  ///< Pad with spaces to a minimum width of 14.
+  kSpacePad15,  ///< Pad with spaces to a minimum width of 15.
+  kSpacePad16,  ///< Pad with spaces to a minimum width of 16.
+  kSpacePad17,  ///< Pad with spaces to a minimum width of 17.
+  kSpacePad18,  ///< Pad with spaces to a minimum width of 18.
+  kSpacePad19,  ///< Pad with spaces to a minimum width of 19.
+  kSpacePad20,  ///< Pad with spaces to a minimum width of 20.
 };
 
-// -----------------------------------------------------------------------------
-// Hex
-// -----------------------------------------------------------------------------
-//
-// `Hex` stores a set of hexadecimal string conversion parameters for use
-// within `AlphaNum` string conversions.
+/// Stores a set of hexadecimal string conversion parameters for use
+/// within `AlphaNum` string conversions.
 struct Hex {
-  uint64_t value;
-  uint8_t width;
-  char fill;
+  uint64_t value;  ///< The value to format as hexadecimal.
+  uint8_t width;   ///< The minimum field width of the output.
+  char fill;       ///< The fill character used for padding.
 
+  /// Constructs a `Hex` from a 1-byte integral value.
+  ///
+  /// @param v The value to format as hexadecimal.
+  /// @param spec The padding specification to apply.
   template <typename Int>
   explicit Hex(Int v, PadSpec spec = absl::kNoPad,
                std::enable_if_t<sizeof(Int) == 1 && !std::is_pointer_v<Int>,
                                 bool> = true)
       : Hex(spec, static_cast<uint8_t>(v)) {}
+  /// Constructs a `Hex` from a 2-byte integral value.
+  ///
+  /// @param v The value to format as hexadecimal.
+  /// @param spec The padding specification to apply.
   template <typename Int>
   explicit Hex(Int v, PadSpec spec = absl::kNoPad,
                std::enable_if_t<sizeof(Int) == 2 && !std::is_pointer_v<Int>,
                                 bool> = true)
       : Hex(spec, static_cast<uint16_t>(v)) {}
+  /// Constructs a `Hex` from a 4-byte integral value.
+  ///
+  /// @param v The value to format as hexadecimal.
+  /// @param spec The padding specification to apply.
   template <typename Int>
   explicit Hex(Int v, PadSpec spec = absl::kNoPad,
                std::enable_if_t<sizeof(Int) == 4 && !std::is_pointer_v<Int>,
                                 bool> = true)
       : Hex(spec, static_cast<uint32_t>(v)) {}
+  /// Constructs a `Hex` from an 8-byte integral value.
+  ///
+  /// @param v The value to format as hexadecimal.
+  /// @param spec The padding specification to apply.
   template <typename Int>
   explicit Hex(Int v, PadSpec spec = absl::kNoPad,
                std::enable_if_t<sizeof(Int) == 8 && !std::is_pointer_v<Int>,
                                 bool> = true)
       : Hex(spec, static_cast<uint64_t>(v)) {}
+  /// Constructs a `Hex` from a pointer value.
+  ///
+  /// @param v The pointer whose address is formatted as hexadecimal.
+  /// @param spec The padding specification to apply.
   template <typename Pointee>
   explicit Hex(Pointee* absl_nullable v, PadSpec spec = absl::kNoPad)
       : Hex(spec, reinterpret_cast<uintptr_t>(v)) {}
 
+  /// Appends the hexadecimal representation of `hex` to `sink`.
+  ///
+  /// @param sink The output sink that receives the formatted text.
+  /// @param hex The hexadecimal conversion parameters to format.
   template <typename S>
   friend void AbslStringify(S& sink, Hex hex) {
     static_assert(
@@ -251,19 +273,21 @@ struct Hex {
         fill(spec >= absl::kSpacePad2 ? ' ' : '0') {}
 };
 
-// -----------------------------------------------------------------------------
-// Dec
-// -----------------------------------------------------------------------------
-//
-// `Dec` stores a set of decimal string conversion parameters for use
-// within `AlphaNum` string conversions.  Dec is slower than the default
-// integer conversion, so use it only if you need padding.
+/// Stores a set of decimal string conversion parameters for use
+/// within `AlphaNum` string conversions.
+///
+/// `Dec` is slower than the default integer conversion, so use it only if you
+/// need padding.
 struct Dec {
-  uint64_t value;
-  uint8_t width;
-  char fill;
-  bool neg;
+  uint64_t value;  ///< The magnitude of the value to format.
+  uint8_t width;   ///< The minimum field width of the output.
+  char fill;       ///< The fill character used for padding.
+  bool neg;        ///< Whether the value is negative.
 
+  /// Constructs a `Dec` from an integral value.
+  ///
+  /// @param v The value to format as decimal.
+  /// @param spec The padding specification to apply.
   template <typename Int>
   explicit Dec(Int v, PadSpec spec = absl::kNoPad,
                std::enable_if_t<sizeof(Int) <= 8, bool> = true)
@@ -275,6 +299,10 @@ struct Dec {
         fill(spec >= absl::kSpacePad2 ? ' ' : '0'),
         neg(v < 0) {}
 
+  /// Appends the decimal representation of `dec` to `sink`.
+  ///
+  /// @param sink The output sink that receives the formatted text.
+  /// @param dec The decimal conversion parameters to format.
   template <typename S>
   friend void AbslStringify(S& sink, Dec dec) {
     assert(dec.width <= numbers_internal::kFastToBufferSize);
@@ -308,19 +336,17 @@ struct Dec {
   }
 };
 
-// -----------------------------------------------------------------------------
-// HighPrecision
-// -----------------------------------------------------------------------------
-//
-// Converts floating point values to a string which, if passed to
-// `absl::SimpleAtof`/`absl::SimpleAtod`, would produce the exact same original
-// floating point value (except in case of NaN; all NaNs are considered the same
-// value). Tries to keep the string short but it's not guaranteed to be as short
-// as possible.
-//
-// HighPrecision is conisderably slower than the default formatting, so only use
-// it if you need the string to convert back to the same floating-point value.
-
+/// Converts a `float` to a string which, if passed to `absl::SimpleAtof`,
+/// would produce the exact same original floating point value (except in case
+/// of NaN; all NaNs are considered the same value).
+///
+/// Tries to keep the string short but it's not guaranteed to be as short as
+/// possible. `HighPrecision` is considerably slower than the default
+/// formatting, so only use it if you need the string to convert back to the
+/// same floating-point value.
+///
+/// @param f The floating point value to convert.
+/// @return A buffer holding the round-trippable string representation.
 inline strings_internal::AlphaNumBuffer<numbers_internal::kFastToBufferSize>
 HighPrecision(float f) {
   strings_internal::AlphaNumBuffer<numbers_internal::kFastToBufferSize> result;
@@ -329,6 +355,17 @@ HighPrecision(float f) {
   return result;
 }
 
+/// Converts a `double` to a string which, if passed to `absl::SimpleAtod`,
+/// would produce the exact same original floating point value (except in case
+/// of NaN; all NaNs are considered the same value).
+///
+/// Tries to keep the string short but it's not guaranteed to be as short as
+/// possible. `HighPrecision` is considerably slower than the default
+/// formatting, so only use it if you need the string to convert back to the
+/// same floating-point value.
+///
+/// @param d The floating point value to convert.
+/// @return A buffer holding the round-trippable string representation.
 inline strings_internal::AlphaNumBuffer<numbers_internal::kFastToBufferSize>
 HighPrecision(double d) {
   strings_internal::AlphaNumBuffer<numbers_internal::kFastToBufferSize> result;
@@ -337,98 +374,156 @@ HighPrecision(double d) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// AlphaNum
-// -----------------------------------------------------------------------------
-//
-// The `AlphaNum` class acts as the main parameter type for `StrCat()` and
-// `StrAppend()`, providing efficient conversion of numeric, boolean, decimal,
-// and hexadecimal values (through the `Dec` and `Hex` types) into strings.
-// `AlphaNum` should only be used as a function parameter. Do not instantiate
-//  `AlphaNum` directly as a stack variable.
-
+/// The main parameter type for `StrCat()` and `StrAppend()`.
+///
+/// `AlphaNum` provides efficient conversion of numeric, boolean, decimal,
+/// and hexadecimal values (through the `Dec` and `Hex` types) into strings.
+/// `AlphaNum` should only be used as a function parameter. Do not instantiate
+/// `AlphaNum` directly as a stack variable.
 class AlphaNum {
  public:
   // No bool ctor -- bools convert to an integral type.
   // A bool ctor would also convert incoming pointers (bletch).
 
-  // Prevent brace initialization
+  /// Deleted to prevent brace initialization.
   template <typename T>
-  AlphaNum(std::initializer_list<T>) = delete;  // NOLINT(runtime/explicit)
+  AlphaNum(std::initializer_list<T> list) = delete;  // NOLINT(runtime/explicit)
 
+  /// Constructs an `AlphaNum` from an `int`.
+  ///
+  /// @param x The value to convert.
   AlphaNum(int x)  // NOLINT(runtime/explicit)
       : piece_(digits_, static_cast<size_t>(
                             numbers_internal::FastIntToBuffer(x, digits_) -
                             &digits_[0])) {}
+  /// Constructs an `AlphaNum` from an `unsigned int`.
+  ///
+  /// @param x The value to convert.
   AlphaNum(unsigned int x)  // NOLINT(runtime/explicit)
       : piece_(digits_, static_cast<size_t>(
                             numbers_internal::FastIntToBuffer(x, digits_) -
                             &digits_[0])) {}
+  /// Constructs an `AlphaNum` from a `long`.
+  ///
+  /// @param x The value to convert.
   AlphaNum(long x)  // NOLINT(*)
       : piece_(digits_, static_cast<size_t>(
                             numbers_internal::FastIntToBuffer(x, digits_) -
                             &digits_[0])) {}
+  /// Constructs an `AlphaNum` from an `unsigned long`.
+  ///
+  /// @param x The value to convert.
   AlphaNum(unsigned long x)  // NOLINT(*)
       : piece_(digits_, static_cast<size_t>(
                             numbers_internal::FastIntToBuffer(x, digits_) -
                             &digits_[0])) {}
+  /// Constructs an `AlphaNum` from a `long long`.
+  ///
+  /// @param x The value to convert.
   AlphaNum(long long x)  // NOLINT(*)
       : piece_(digits_, static_cast<size_t>(
                             numbers_internal::FastIntToBuffer(x, digits_) -
                             &digits_[0])) {}
+  /// Constructs an `AlphaNum` from an `unsigned long long`.
+  ///
+  /// @param x The value to convert.
   AlphaNum(unsigned long long x)  // NOLINT(*)
       : piece_(digits_, static_cast<size_t>(
                             numbers_internal::FastIntToBuffer(x, digits_) -
                             &digits_[0])) {}
 
+  /// Constructs an `AlphaNum` from a `float`.
+  ///
+  /// @param f The value to convert.
   AlphaNum(float f)  // NOLINT(runtime/explicit)
       : piece_(digits_, numbers_internal::SixDigitsToBuffer(f, digits_)) {}
+  /// Constructs an `AlphaNum` from a `double`.
+  ///
+  /// @param f The value to convert.
   AlphaNum(double f)  // NOLINT(runtime/explicit)
       : piece_(digits_, numbers_internal::SixDigitsToBuffer(f, digits_)) {}
 
+  /// Constructs an `AlphaNum` from a fixed-size conversion buffer.
+  ///
+  /// @param buf The buffer holding the already-converted characters.
   template <size_t size>
   AlphaNum(  // NOLINT(runtime/explicit)
       const strings_internal::AlphaNumBuffer<size>& buf
           ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : piece_(&buf.data[0], buf.size) {}
 
+  /// Constructs an `AlphaNum` from a null-terminated C string.
+  ///
+  /// @param c_str The null-terminated string; null produces no output.
   AlphaNum(const char* absl_nullable c_str  // NOLINT(runtime/explicit)
                ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : piece_(NullSafeStringView(c_str)) {}
+  /// Constructs an `AlphaNum` from an `absl::string_view`.
+  ///
+  /// @param pc The string view to convert.
   AlphaNum(absl::string_view pc  // NOLINT(runtime/explicit)
                ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : piece_(pc) {}
 
 #if !defined(ABSL_USES_STD_STRING_VIEW)
+  /// Constructs an `AlphaNum` from a `std::string_view`.
+  ///
+  /// @param pc The string view to convert.
   AlphaNum(std::string_view pc  // NOLINT(runtime/explicit)
                ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : piece_(pc.data(), pc.size()) {}
 #endif  // !ABSL_USES_STD_STRING_VIEW
 
+  /// Constructs an `AlphaNum` from a type with an `AbslStringify()` overload.
+  ///
+  /// @param v The value to stringify.
+  /// @param sink The sink used to hold the stringified result.
   template <typename T, typename = std::enable_if_t<HasAbslStringify<T>::value>>
   AlphaNum(  // NOLINT(runtime/explicit)
       const T& v ABSL_ATTRIBUTE_LIFETIME_BOUND,
       strings_internal::StringifySink&& sink ABSL_ATTRIBUTE_LIFETIME_BOUND = {})
       : piece_(strings_internal::ExtractStringification(sink, v)) {}
 
+  /// Constructs an `AlphaNum` from a `std::basic_string`.
+  ///
+  /// @param str The string to convert.
   template <typename Allocator>
   AlphaNum(  // NOLINT(runtime/explicit)
       const std::basic_string<char, std::char_traits<char>, Allocator>& str
           ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : piece_(str) {}
 
-  // Use string literals ":" instead of character literals ':'.
+  /// Deleted: use string literals ":" instead of character literals ':'.
+  ///
+  /// @param c The character (not accepted).
   AlphaNum(char c) = delete;  // NOLINT(runtime/explicit)
 
-  AlphaNum(const AlphaNum&) = delete;
-  AlphaNum& operator=(const AlphaNum&) = delete;
+  /// Deleted copy constructor; `AlphaNum` is not copyable.
+  AlphaNum(const AlphaNum& other) = delete;
+  /// Deleted copy assignment; `AlphaNum` is not assignable.
+  ///
+  /// @return This object (never returns; deleted).
+  AlphaNum& operator=(const AlphaNum& other) = delete;
 
+  /// Returns the size of the converted string.
+  ///
+  /// @return The number of characters in the string representation.
   absl::string_view::size_type size() const { return piece_.size(); }
+  /// Returns a pointer to the converted string data.
+  ///
+  /// @return A pointer to the string representation.
   const char* absl_nullable data() const { return piece_.data(); }
+  /// Returns the converted string as a view.
+  ///
+  /// @return A view over the string representation.
   absl::string_view Piece() const { return piece_; }
 
-  // Match unscoped enums.  Use integral promotion so that a `char`-backed
-  // enum becomes a wider integral type AlphaNum will accept.
+  /// Constructs an `AlphaNum` from an unscoped enum.
+  ///
+  /// Uses integral promotion so that a `char`-backed enum becomes a wider
+  /// integral type `AlphaNum` will accept.
+  ///
+  /// @param e The enum value to convert.
   template <typename T,
             typename = std::enable_if_t<std::is_enum<T>{} &&
                                         std::is_convertible<T, int>{} &&
@@ -436,8 +531,12 @@ class AlphaNum {
   AlphaNum(T e)  // NOLINT(runtime/explicit)
       : AlphaNum(+e) {}
 
-  // This overload matches scoped enums.  We must explicitly cast to the
-  // underlying type, but use integral promotion for the same reason as above.
+  /// Constructs an `AlphaNum` from a scoped enum.
+  ///
+  /// Casts to the underlying type, then uses integral promotion for the same
+  /// reason as the unscoped enum overload.
+  ///
+  /// @param e The enum value to convert.
   template <typename T, std::enable_if_t<std::is_enum<T>{} &&
                                              !std::is_convertible<T, int>{} &&
                                              !HasAbslStringify<T>::value,
@@ -445,8 +544,12 @@ class AlphaNum {
   AlphaNum(T e)  // NOLINT(runtime/explicit)
       : AlphaNum(+static_cast<std::underlying_type_t<T>>(e)) {}
 
-  // vector<bool>::reference and const_reference require special help to
-  // convert to `AlphaNum` because it requires two user defined conversions.
+  /// Constructs an `AlphaNum` from a `std::vector<bool>` element reference.
+  ///
+  /// `vector<bool>::reference` and `const_reference` require special help to
+  /// convert to `AlphaNum` because it requires two user defined conversions.
+  ///
+  /// @param e The bit reference to convert.
   template <
       typename T,
       std::enable_if_t<
@@ -572,24 +675,61 @@ using EnableIfFastCase = T;
 
 }  // namespace strings_internal
 
+/// Merges the given strings or numbers into a single string.
+///
+/// @return An empty string.
 [[nodiscard]] inline std::string StrCat() { return std::string(); }
 
+/// Merges a single arithmetic value into a string.
+///
+/// @param a The value to convert.
+/// @return The string representation of `a`.
 template <typename T>
 [[nodiscard]] inline std::string StrCat(
     strings_internal::EnableIfFastCase<T> a) {
   return strings_internal::SingleArgStrCat(a);
 }
+/// Merges a single value into a string.
+///
+/// @param a The value to convert.
+/// @return The string representation of `a`.
 [[nodiscard]] inline std::string StrCat(const AlphaNum& a) {
   return std::string(a.data(), a.size());
 }
 
+/// Merges two strings or numbers into a single string.
+///
+/// @param a The first value to concatenate.
+/// @param b The second value to concatenate.
+/// @return The concatenation of the arguments.
 [[nodiscard]] std::string StrCat(const AlphaNum& a, const AlphaNum& b);
+/// Merges three strings or numbers into a single string.
+///
+/// @param a The first value to concatenate.
+/// @param b The second value to concatenate.
+/// @param c The third value to concatenate.
+/// @return The concatenation of the arguments.
 [[nodiscard]] std::string StrCat(const AlphaNum& a, const AlphaNum& b,
                                  const AlphaNum& c);
+/// Merges four strings or numbers into a single string.
+///
+/// @param a The first value to concatenate.
+/// @param b The second value to concatenate.
+/// @param c The third value to concatenate.
+/// @param d The fourth value to concatenate.
+/// @return The concatenation of the arguments.
 [[nodiscard]] std::string StrCat(const AlphaNum& a, const AlphaNum& b,
                                  const AlphaNum& c, const AlphaNum& d);
 
-// Support 5 or more arguments
+/// Merges five or more strings or numbers into a single string.
+///
+/// @param a The first value to concatenate.
+/// @param b The second value to concatenate.
+/// @param c The third value to concatenate.
+/// @param d The fourth value to concatenate.
+/// @param e The fifth value to concatenate.
+/// @param args Any additional values to concatenate.
+/// @return The concatenation of the arguments.
 template <typename... AV>
 [[nodiscard]] inline std::string StrCat(const AlphaNum& a, const AlphaNum& b,
                                         const AlphaNum& c, const AlphaNum& d,
@@ -626,16 +766,48 @@ template <typename... AV>
 //   absl::string_view p = s;
 //   StrAppend(&s, p);
 
-inline void StrAppend(std::string* absl_nonnull) {}
+/// Appends nothing to the destination string.
+/// @param dest The destination string.
+inline void StrAppend(std::string* absl_nonnull dest) {}
+/// Appends a single string or number to an existing string.
+///
+/// @param dest The string to append to.
+/// @param a The value to append.
 void StrAppend(std::string* absl_nonnull dest, const AlphaNum& a);
+/// Appends two strings or numbers to an existing string.
+///
+/// @param dest The string to append to.
+/// @param a The first value to append.
+/// @param b The second value to append.
 void StrAppend(std::string* absl_nonnull dest, const AlphaNum& a,
                const AlphaNum& b);
+/// Appends three strings or numbers to an existing string.
+///
+/// @param dest The string to append to.
+/// @param a The first value to append.
+/// @param b The second value to append.
+/// @param c The third value to append.
 void StrAppend(std::string* absl_nonnull dest, const AlphaNum& a,
                const AlphaNum& b, const AlphaNum& c);
+/// Appends four strings or numbers to an existing string.
+///
+/// @param dest The string to append to.
+/// @param a The first value to append.
+/// @param b The second value to append.
+/// @param c The third value to append.
+/// @param d The fourth value to append.
 void StrAppend(std::string* absl_nonnull dest, const AlphaNum& a,
                const AlphaNum& b, const AlphaNum& c, const AlphaNum& d);
 
-// Support 5 or more arguments
+/// Appends five or more strings or numbers to an existing string.
+///
+/// @param dest The string to append to.
+/// @param a The first value to append.
+/// @param b The second value to append.
+/// @param c The third value to append.
+/// @param d The fourth value to append.
+/// @param e The fifth value to append.
+/// @param args Any additional values to append.
 template <typename... AV>
 inline void StrAppend(std::string* absl_nonnull dest, const AlphaNum& a,
                       const AlphaNum& b, const AlphaNum& c, const AlphaNum& d,
@@ -645,8 +817,12 @@ inline void StrAppend(std::string* absl_nonnull dest, const AlphaNum& a,
              static_cast<const AlphaNum&>(args).Piece()...});
 }
 
-// Helper function for the future StrCat default floating-point format, %.6g
-// This is fast.
+/// Helper function for the default `StrCat()` floating-point format, `%.6g`.
+///
+/// This is fast.
+///
+/// @param d The floating point value to convert.
+/// @return A buffer holding the six-digit string representation.
 inline strings_internal::AlphaNumBuffer<
     numbers_internal::kSixDigitsToBufferSize>
 SixDigits(double d) {

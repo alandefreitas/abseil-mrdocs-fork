@@ -43,25 +43,6 @@ namespace flags_internal {
 class PrivateHandleAccessor;
 }  // namespace flags_internal
 
-// CommandLineFlag
-//
-// This type acts as a type-erased handle for an instance of an Abseil Flag and
-// holds reflection information pertaining to that flag. Use CommandLineFlag to
-// access a flag's name, location, help string etc.
-//
-// To obtain an absl::CommandLineFlag, invoke `absl::FindCommandLineFlag()`
-// passing it the flag name string.
-//
-// Example:
-//
-//   // Obtain reflection handle for a flag named "flagname".
-//   const absl::CommandLineFlag* my_flag_data =
-//        absl::FindCommandLineFlag("flagname");
-//
-//   // Now you can get flag info from that reflection handle.
-//   std::string flag_location = my_flag_data->Filename();
-//   ...
-
 // These are only used as constexpr global objects.
 // They do not use a virtual destructor to simplify their implementation.
 // They are not destroyed except at program exit, so leaks do not matter.
@@ -69,26 +50,46 @@ class PrivateHandleAccessor;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
+/// A type-erased handle for an instance of an Abseil Flag and holds
+/// reflection information pertaining to that flag. Use `CommandLineFlag` to
+/// access a flag's name, location, help string etc.
+///
+/// To obtain an `absl::CommandLineFlag`, invoke `absl::FindCommandLineFlag()`
+/// passing it the flag name string.
+///
+/// Example:
+///
+///   // Obtain reflection handle for a flag named "flagname".
+///   const absl::CommandLineFlag* my_flag_data =
+///        absl::FindCommandLineFlag("flagname");
+///
+///   // Now you can get flag info from that reflection handle.
+///   std::string flag_location = my_flag_data->Filename();
+///   ...
 class CommandLineFlag {
  public:
+  /// Constructs an empty command line flag handle.
   constexpr CommandLineFlag() = default;
 
-  // Not copyable/assignable.
-  CommandLineFlag(const CommandLineFlag&) = delete;
-  CommandLineFlag& operator=(const CommandLineFlag&) = delete;
+  /// Not copyable.
+  CommandLineFlag(const CommandLineFlag& other) = delete;
 
-  // absl::CommandLineFlag::IsOfType()
-  //
-  // Return true iff flag has type T.
+  /// Not assignable.
+  ///
+  /// @return A reference to this object.
+  CommandLineFlag& operator=(const CommandLineFlag& other) = delete;
+
+  /// Returns true if the flag has type `T`.
+  ///
+  /// @return `true` iff flag has type `T`.
   template <typename T>
   inline bool IsOfType() const {
     return TypeId() == FastTypeId<T>();
   }
 
-  // absl::CommandLineFlag::TryGet()
-  //
-  // Attempts to retrieve the flag value. Returns value on success,
-  // std::nullopt otherwise.
+  /// Attempts to retrieve the flag value.
+  ///
+  /// @return The flag value on success, `std::nullopt` otherwise.
   template <typename T>
   std::optional<T> TryGet() const {
     if (IsRetired() || !IsOfType<T>()) {
@@ -125,44 +126,48 @@ class CommandLineFlag {
     return std::move(u.value);
   }
 
-  // absl::CommandLineFlag::Name()
-  //
-  // Returns name of this flag.
+  /// Returns name of this flag.
+  ///
+  /// @return The name of this flag.
   virtual absl::string_view Name() const = 0;
 
-  // absl::CommandLineFlag::Filename()
-  //
-  // Returns name of the file where this flag is defined.
+  /// Returns name of the file where this flag is defined.
+  ///
+  /// @return The name of the file where this flag is defined.
   virtual std::string Filename() const = 0;
 
-  // absl::CommandLineFlag::Help()
-  //
-  // Returns help message associated with this flag.
+  /// Returns help message associated with this flag.
+  ///
+  /// @return The help message associated with this flag.
   virtual std::string Help() const = 0;
 
-  // absl::CommandLineFlag::IsRetired()
-  //
-  // Returns true iff this object corresponds to retired flag.
+  /// Returns true iff this object corresponds to retired flag.
+  ///
+  /// @return `true` iff this object corresponds to a retired flag.
   virtual bool IsRetired() const;
 
-  // absl::CommandLineFlag::DefaultValue()
-  //
-  // Returns the default value for this flag.
+  /// Returns the default value for this flag.
+  ///
+  /// @return The default value for this flag.
   virtual std::string DefaultValue() const = 0;
 
-  // absl::CommandLineFlag::CurrentValue()
-  //
-  // Returns the current value for this flag.
+  /// Returns the current value for this flag.
+  ///
+  /// @return The current value for this flag.
   virtual std::string CurrentValue() const = 0;
 
-  // absl::CommandLineFlag::ParseFrom()
-  //
-  // Sets the value of the flag based on specified string `value`. If the flag
-  // was successfully set to new value, it returns true. Otherwise, sets `error`
-  // to indicate the error, leaves the flag unchanged, and returns false.
+  /// Sets the value of the flag based on specified string `value`. If the
+  /// flag was successfully set to new value, it returns true. Otherwise, sets
+  /// `error` to indicate the error, leaves the flag unchanged, and returns
+  /// false.
+  ///
+  /// @param value The new value to parse and assign to the flag.
+  /// @param error Set to an error message when parsing fails.
+  /// @return `true` if the flag was successfully set to the new value.
   bool ParseFrom(absl::string_view value, std::string* absl_nonnull error);
 
  protected:
+  /// Destroys this handle. Protected so only derived types may be destroyed.
   ~CommandLineFlag() = default;
 
  private:

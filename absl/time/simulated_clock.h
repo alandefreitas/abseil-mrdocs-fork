@@ -36,58 +36,84 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// A simulated clock is a concrete Clock implementation that does not "tick"
-// on its own.  Time is advanced by explicit calls to the AdvanceTime() or
-// SetTime() functions.
-//
-// Example:
-//   absl::SimulatedClock sim_clock;
-//   absl::Time now = sim_clock.TimeNow();
-//   // now == absl::UnixEpoch()
-//
-//   now = sim_clock.TimeNow();
-//   // now == absl::UnixEpoch() (still)
-//
-//   sim_clock.AdvanceTime(absl::Seconds(3));
-//   now = sim_clock.TimeNow();
-//   // now == absl::UnixEpoch() + absl::Seconds(3)
-//
-// This class is thread-safe.
+/// A simulated clock is a concrete Clock implementation that does not "tick"
+/// on its own.  Time is advanced by explicit calls to the AdvanceTime() or
+/// SetTime() functions.
+///
+/// Example:
+///   absl::SimulatedClock sim_clock;
+///   absl::Time now = sim_clock.TimeNow();
+///   // now == absl::UnixEpoch()
+///
+///   now = sim_clock.TimeNow();
+///   // now == absl::UnixEpoch() (still)
+///
+///   sim_clock.AdvanceTime(absl::Seconds(3));
+///   now = sim_clock.TimeNow();
+///   // now == absl::UnixEpoch() + absl::Seconds(3)
+///
+/// This class is thread-safe.
 class SimulatedClock : public Clock {
  public:
+  /// Constructs a simulated clock initialized to the given time.
+  ///
+  /// @param t The initial simulated time.
   explicit SimulatedClock(absl::Time t);
+
+  /// Constructs a simulated clock initialized to the Unix epoch.
   SimulatedClock() : SimulatedClock(absl::UnixEpoch()) {}
 
-  // The destructor should be called only if all Sleep(), etc. and
-  // AdvanceTime() calls have completed. The code does its best to let
-  // any pending calls finish gracefully, but there are no guarantees.
+  /// Destroys the simulated clock.
+  ///
+  /// The destructor should be called only if all Sleep(), etc. and
+  /// AdvanceTime() calls have completed. The code does its best to let
+  /// any pending calls finish gracefully, but there are no guarantees.
   ~SimulatedClock() override;
 
-  // Returns the simulated time.
+  /// Returns the simulated time.
+  ///
+  /// @return The current simulated time.
   absl::Time TimeNow() override;
 
-  // Sleeps until the specified duration has elapsed according to this clock.
+  /// Sleeps until the specified duration has elapsed according to this clock.
+  ///
+  /// @param d The length of simulated time to sleep.
   void Sleep(absl::Duration d) override;
 
-  // Sleeps until the specified wakeup_time.
+  /// Sleeps until the specified wakeup_time.
+  ///
+  /// @param wakeup_time The simulated time at which to wake up.
   void SleepUntil(absl::Time wakeup_time) override;
 
-  // Sets the simulated time to the argument.  Wakes up any threads whose
-  // sleeps have now expired. Returns the number of woken threads.
+  /// Sets the simulated time to the argument.  Wakes up any threads whose
+  /// sleeps have now expired. Returns the number of woken threads.
+  ///
+  /// @param t The new simulated time.
+  /// @return The number of woken threads.
   int64_t SetTime(absl::Time t);
 
-  // Advances the simulated time by the specified duration.  Wakes up any
-  // threads whose sleeps have now expired. Returns the number of woken threads.
+  /// Advances the simulated time by the specified duration.  Wakes up any
+  /// threads whose sleeps have now expired. Returns the number of woken threads.
+  ///
+  /// @param d The duration to advance the simulated time by.
+  /// @return The number of woken threads.
   int64_t AdvanceTime(absl::Duration d);
 
-  // Blocks until the condition is true or until the simulated clock is
-  // advanced to or beyond the wakeup time (or both).
+  /// Blocks until the condition is true or until the simulated clock is
+  /// advanced to or beyond the wakeup time (or both).
+  ///
+  /// @param mu The mutex guarding `cond`, held at least in shared mode.
+  /// @param cond The condition to wait on.
+  /// @param deadline The simulated time by which to stop waiting.
+  /// @return `true` iff `cond` holds when returning.
   bool AwaitWithDeadline(absl::Mutex* absl_nonnull mu,
                          const absl::Condition& cond,
                          absl::Time deadline) override
       ABSL_SHARED_LOCKS_REQUIRED(mu);
 
-  // Returns the earliest wakeup time.
+  /// Returns the earliest wakeup time.
+  ///
+  /// @return The earliest pending wakeup time, or no value if none is pending.
   std::optional<absl::Time> GetEarliestWakeupTime() const;
 
  private:

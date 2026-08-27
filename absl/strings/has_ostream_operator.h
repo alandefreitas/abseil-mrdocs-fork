@@ -24,8 +24,7 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// Detects if type `T` supports streaming to `std::ostream`s with `operator<<`.
-
+/// Detects if type `T` supports streaming to `std::ostream`s with `operator<<`.
 template <typename T, typename = void>
 struct HasOstreamOperator : std::false_type {};
 

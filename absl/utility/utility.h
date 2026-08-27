@@ -30,13 +30,22 @@
 
 // TODO(b/509512528): Deprecate the C++14/C++17 symbols publicly, in all files.
 
+// Abseil's root namespace.
+//
+// Contains general-purpose utilities and library components.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// Historical note: Abseil once provided implementations of these
-// abstractions for platforms that had not yet provided them. Those
-// platforms are no longer supported. New code should simply use the
-// the ones from std directly.
+/// Invoke a callable with the elements of a tuple as arguments.
+///
+/// Historical note: Abseil once provided implementations of these
+/// abstractions for platforms that had not yet provided them. Those
+/// platforms are no longer supported. New code should simply use the
+/// the ones from std directly.
+///
+/// @param f The callable to invoke.
+/// @param t The tuple whose elements are unpacked as arguments.
+/// @return The result of invoking `f` with the tuple's elements.
 template <class F, class T>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr decltype(auto)
@@ -45,6 +54,11 @@ constexpr decltype(auto)
   return std::apply(std::forward<F>(f), std::forward<T>(t));
 }
 
+/// Replace the value of an object and return its old value.
+///
+/// @param obj The object whose value is replaced.
+/// @param new_value The value to assign to `obj`.
+/// @return The previous value of `obj`.
 template <class T1, class T2 = T1>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr T1 exchange(T1& obj, T2&& new_value) noexcept(
@@ -52,6 +66,10 @@ constexpr T1 exchange(T1& obj, T2&& new_value) noexcept(
   return std::exchange(obj, std::forward<T2>(new_value));
 }
 
+/// Forward an lvalue as either an lvalue or an rvalue.
+///
+/// @param arg The value to forward.
+/// @return `arg` cast to the deduced reference type.
 template <class T>
 [[deprecated("Use std::forward instead.")]] [[nodiscard]] constexpr T&& forward(
     std::remove_reference_t<T>& arg ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
@@ -59,6 +77,10 @@ template <class T>
   return std::forward<T>(arg);
 }
 
+/// Forward an rvalue as an rvalue.
+///
+/// @param arg The value to forward.
+/// @return `arg` cast to the deduced reference type.
 template <class T>
 [[deprecated("Use std::forward instead.")]] [[nodiscard]] constexpr T&& forward(
     std::remove_reference_t<T>&& arg ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
@@ -66,40 +88,53 @@ template <class T>
   return std::forward<T>(arg);
 }
 
+/// Disambiguation tag for in-place construction.
 inline constexpr const std::in_place_t& in_place ABSL_DEPRECATE_AND_INLINE() =
     std::in_place;
 
+/// Disambiguation tag for in-place construction at a given index.
 template <size_t I>
 inline constexpr const std::in_place_index_t<I>& in_place_index
     [[deprecated("Use std::in_place_index<I> instead.")]] =
         std::in_place_index<I>;
 
+/// Tag type for in-place construction at a given index.
 template <size_t I>
 using in_place_index_t [[deprecated("Use std::in_place_index_t<I> instead.")]] =
     std::in_place_index_t<I>;
 
+/// Tag type for in-place construction.
 using in_place_t ABSL_DEPRECATE_AND_INLINE() = std::in_place_t;
 
+/// Disambiguation tag for in-place construction of a given type.
 template <class T>
 inline constexpr const std::in_place_type_t<T>& in_place_type
 ABSL_DEPRECATE_AND_INLINE() = std::in_place_type<T>;
 
+/// Tag type for in-place construction of a given type.
 template <class T>
 using in_place_type_t ABSL_DEPRECATE_AND_INLINE() = std::in_place_type_t<T>;
 
+/// Compile-time sequence of `size_t` indices.
 template <size_t... I>
 using index_sequence [[deprecated("Use std::index_sequence instead.")]] =
     std::index_sequence<I...>;
 
+/// Compile-time sequence of integers of a given type.
 template <class T, T... I>
 using integer_sequence [[deprecated("Use std::integer_sequence instead.")]] =
     std::integer_sequence<T, I...>;
 
+/// Index sequence covering the given parameter pack.
 template <class... T>
 using index_sequence_for
     [[deprecated("Use std::index_sequence_for instead.")]] =
         std::index_sequence_for<T...>;
 
+/// Construct an object of a type from the elements of a tuple.
+///
+/// @param arg The tuple whose elements are used as constructor arguments.
+/// @return The constructed object.
 template <class T, class Tuple>
 ABSL_DEPRECATE_AND_INLINE()
 [[nodiscard]] constexpr decltype(std::make_from_tuple<T>(std::declval<Tuple>()))
@@ -108,16 +143,24 @@ ABSL_DEPRECATE_AND_INLINE()
   return std::make_from_tuple<T>(std::forward<Tuple>(arg));
 }
 
+/// Index sequence of the values `0, 1, ..., N-1`.
 template <size_t N>
 using make_index_sequence
     [[deprecated("Use std::make_index_sequence instead.")]] =
         std::make_index_sequence<N>;
 
+/// Integer sequence of the values `0, 1, ..., N-1` of a given type.
 template <class T, T N>
 using make_integer_sequence
     [[deprecated("Use std::make_integer_sequence instead.")]] =
         std::make_integer_sequence<T, N>;
 
+/// Move a range of elements into an output iterator.
+///
+/// @param begin The start of the input range.
+/// @param end The end of the input range.
+/// @param output The start of the destination range.
+/// @return An iterator past the last moved element.
 template <class It, class OutIt>
 [[deprecated("Use std::move instead.")]]
 constexpr OutIt move(It&& begin, It&& end, OutIt&& output) {
@@ -125,6 +168,10 @@ constexpr OutIt move(It&& begin, It&& end, OutIt&& output) {
                    std::forward<OutIt>(output));
 }
 
+/// Cast a value to an rvalue reference to enable moving from it.
+///
+/// @param arg The value to cast.
+/// @return An rvalue reference to `arg`.
 template <class T>
 [[deprecated("Use std::move instead.")]]
 [[nodiscard]] constexpr std::remove_reference_t<T>&&
@@ -133,14 +180,18 @@ move(T&& arg ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
 }
 
 #if ABSL_INTERNAL_CPLUSPLUS_LANG >= 202002L
-// Backfill for std::nontype_t. An instance of this class can be provided as a
-// disambiguation tag to `absl::function_ref` to pass the address of a known
-// callable at compile time.
-// Requires C++20 due to `auto` template parameter.
+/// Backfill for std::nontype_t.
+///
+/// An instance of this class can be provided as a
+/// disambiguation tag to `absl::function_ref` to pass the address of a known
+/// callable at compile time.
+/// Requires C++20 due to `auto` template parameter.
 template <auto>
 struct nontype_t {
+  /// Construct a `nontype_t` tag.
   explicit nontype_t() = default;
 };
+/// Disambiguation tag value of type `nontype_t`.
 template <auto V>
 constexpr nontype_t<V> nontype{};
 #endif

@@ -170,18 +170,22 @@ void StringResizeAndOverwriteImpl(T& str, typename T::size_type n, Op op) {
 
 }  // namespace strings_internal
 
-// Resizes `str` to contain at most `n` characters, using the user-provided
-// operation `op` to modify the possibly indeterminate contents. `op` must
-// return the finalized length of `str`.
-//
-// Invalidates all iterators, pointers, and references into `str`, regardless
-// of whether reallocation occurs.
-//
-// `op(value_type* buf, size_t buf_size)` is allowed to write `value_type{}` to
-// `buf[buf_size]`, which facilitiates interoperation with functions that write
-// a trailing NUL. Please note that this requirement is more strict than
-// `basic_string::resize_and_overwrite()`, which allows writing an abitrary
-// value to `buf[buf_size]`.
+/// Resizes `str` to contain at most `n` characters, using the user-provided
+/// operation `op` to modify the possibly indeterminate contents. `op` must
+/// return the finalized length of `str`.
+///
+/// Invalidates all iterators, pointers, and references into `str`, regardless
+/// of whether reallocation occurs.
+///
+/// `op(value_type* buf, size_t buf_size)` is allowed to write `value_type{}` to
+/// `buf[buf_size]`, which facilitiates interoperation with functions that write
+/// a trailing NUL. Please note that this requirement is more strict than
+/// `basic_string::resize_and_overwrite()`, which allows writing an abitrary
+/// value to `buf[buf_size]`.
+///
+/// @param str The string to resize and overwrite.
+/// @param n The maximum number of characters `str` will contain.
+/// @param op The operation used to modify the contents of `str`.
 template <typename T, typename Op>
 void StringResizeAndOverwrite(T& str, typename T::size_type n, Op op) {
   strings_internal::StringResizeAndOverwriteImpl(str, n, std::move(op));

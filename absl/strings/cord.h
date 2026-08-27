@@ -107,6 +107,7 @@ class CordReader;
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 class Cord;
+/// Test-only accessor granting access to `Cord` internals.
 class CordTestPeer;
 template <typename Releaser>
 Cord MakeCordFromExternal(absl::string_view, Releaser&&);
@@ -114,382 +115,532 @@ void CopyCordToString(const Cord& src, std::string* absl_nonnull dst);
 void AppendCordToString(const Cord& src, std::string* absl_nonnull dst);
 [[nodiscard]] size_t CopyCordToSpan(const Cord& src, absl::Span<char> dst);
 
-// Cord memory accounting modes
+/// Memory accounting modes for `Cord::EstimatedMemoryUsage()`.
 enum class CordMemoryAccounting {
-  // Counts the *approximate* number of bytes held in full or in part by this
-  // Cord (which may not remain the same between invocations). Cords that share
-  // memory could each be "charged" independently for the same shared memory.
-  // See also comment on `kTotalMorePrecise` on internally shared memory.
+  /// Counts the *approximate* number of bytes held in full or in part by this
+  /// Cord (which may not remain the same between invocations). Cords that share
+  /// memory could each be "charged" independently for the same shared memory.
+  /// See also comment on `kTotalMorePrecise` on internally shared memory.
   kTotal,
 
-  // Counts the *approximate* number of bytes held in full or in part by this
-  // Cord for the distinct memory held by this cord. This option is similar
-  // to `kTotal`, except that if the cord has multiple references to the same
-  // memory, that memory is only counted once.
-  //
-  // For example:
-  //   absl::Cord cord;
-  //   cord.Append(some_other_cord);
-  //   cord.Append(some_other_cord);
-  //   // Counts `some_other_cord` twice:
-  //   cord.EstimatedMemoryUsage(kTotal);
-  //   // Counts `some_other_cord` once:
-  //   cord.EstimatedMemoryUsage(kTotalMorePrecise);
-  //
-  // The `kTotalMorePrecise` number is more expensive to compute as it requires
-  // deduplicating all memory references. Applications should prefer to use
-  // `kFairShare` or `kTotal` unless they really need a more precise estimate
-  // on "how much memory is potentially held / kept alive by this cord?"
+  /// Counts the *approximate* number of bytes held in full or in part by this
+  /// Cord for the distinct memory held by this cord. This option is similar
+  /// to `kTotal`, except that if the cord has multiple references to the same
+  /// memory, that memory is only counted once.
+  ///
+  /// For example:
+  ///   absl::Cord cord;
+  ///   cord.Append(some_other_cord);
+  ///   cord.Append(some_other_cord);
+  ///   // Counts `some_other_cord` twice:
+  ///   cord.EstimatedMemoryUsage(kTotal);
+  ///   // Counts `some_other_cord` once:
+  ///   cord.EstimatedMemoryUsage(kTotalMorePrecise);
+  ///
+  /// The `kTotalMorePrecise` number is more expensive to compute as it requires
+  /// deduplicating all memory references. Applications should prefer to use
+  /// `kFairShare` or `kTotal` unless they really need a more precise estimate
+  /// on "how much memory is potentially held / kept alive by this cord?"
   kTotalMorePrecise,
 
-  // Counts the *approximate* number of bytes held in full or in part by this
-  // Cord weighted by the sharing ratio of that data. For example, if some data
-  // edge is shared by 4 different Cords, then each cord is attributed 1/4th of
-  // the total memory usage as a 'fair share' of the total memory usage.
+  /// Counts the *approximate* number of bytes held in full or in part by this
+  /// Cord weighted by the sharing ratio of that data. For example, if some data
+  /// edge is shared by 4 different Cords, then each cord is attributed 1/4th of
+  /// the total memory usage as a 'fair share' of the total memory usage.
   kFairShare,
 };
 
-// Cord
-//
-// A Cord is a sequence of characters, designed to be more efficient than a
-// `std::string` in certain circumstances: namely, large string data that needs
-// to change over its lifetime or shared, especially when such data is shared
-// across API boundaries.
-//
-// A Cord stores its character data in a structure that allows efficient prepend
-// and append operations. This makes a Cord useful for large string data sent
-// over in a wire format that may need to be prepended or appended at some point
-// during the data exchange (e.g. HTTP, protocol buffers). For example, a
-// Cord is useful for storing an HTTP request, and prepending an HTTP header to
-// such a request.
-//
-// Cords should not be used for storing general string data, however. They
-// require overhead to construct and are slower than strings for random access.
-//
-// The Cord API provides the following common API operations:
-//
-// * Create or assign Cords out of existing string data, memory, or other Cords
-// * Append and prepend data to an existing Cord
-// * Create new Sub-Cords from existing Cord data
-// * Swap Cord data and compare Cord equality
-// * Write out Cord data by constructing a `std::string`
-//
-// Additionally, the API provides iterator utilities to iterate through Cord
-// data via chunks or character bytes.
-//
+/// A sequence of characters, more efficient than `std::string` for large,
+/// shared, or frequently-modified string data.
+///
+/// A Cord is a sequence of characters, designed to be more efficient than a
+/// `std::string` in certain circumstances: namely, large string data that needs
+/// to change over its lifetime or shared, especially when such data is shared
+/// across API boundaries.
+///
+/// A Cord stores its character data in a structure that allows efficient prepend
+/// and append operations. This makes a Cord useful for large string data sent
+/// over in a wire format that may need to be prepended or appended at some point
+/// during the data exchange (e.g. HTTP, protocol buffers). For example, a
+/// Cord is useful for storing an HTTP request, and prepending an HTTP header to
+/// such a request.
+///
+/// Cords should not be used for storing general string data, however. They
+/// require overhead to construct and are slower than strings for random access.
+///
+/// The Cord API provides the following common API operations:
+///
+/// * Create or assign Cords out of existing string data, memory, or other Cords
+/// * Append and prepend data to an existing Cord
+/// * Create new Sub-Cords from existing Cord data
+/// * Swap Cord data and compare Cord equality
+/// * Write out Cord data by constructing a `std::string`
+///
+/// Additionally, the API provides iterator utilities to iterate through Cord
+/// data via chunks or character bytes.
+///
 class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
  private:
   template <typename T>
   using EnableIfString = std::enable_if_t<std::is_same_v<T, std::string>, int>;
 
  public:
-  // Cord::Cord() Constructors.
-
-  // Creates an empty Cord.
+  /// Creates an empty Cord.
   constexpr Cord() noexcept;
 
-  // Creates a Cord from an existing Cord. Cord is copyable and efficiently
-  // movable. The moved-from state is valid but unspecified.
+  /// Creates a Cord from an existing Cord.
+  ///
+  /// Cord is copyable and efficiently movable. The moved-from state is valid
+  /// but unspecified.
+  ///
+  /// @param src The Cord to copy from.
   Cord(const Cord& src);
+
+  /// Creates a Cord by moving from an existing Cord.
+  ///
+  /// The moved-from state is valid but unspecified.
+  ///
+  /// @param src The Cord to move from.
   Cord(Cord&& src) noexcept;
+
+  /// Assigns the contents of another Cord to this Cord.
+  ///
+  /// @param x The Cord to copy from.
+  /// @return A reference to this Cord.
   Cord& operator=(const Cord& x);
+
+  /// Move-assigns the contents of another Cord to this Cord.
+  ///
+  /// @param x The Cord to move from.
+  /// @return A reference to this Cord.
   Cord& operator=(Cord&& x) noexcept;
 
-  // Creates a Cord from a `src` string. This constructor is marked explicit to
-  // prevent implicit Cord constructions from arguments convertible to an
-  // `absl::string_view`.
+  /// Creates a Cord from a `src` string.
+  ///
+  /// This constructor is marked explicit to prevent implicit Cord constructions
+  /// from arguments convertible to an `absl::string_view`.
+  ///
+  /// @param src The string data to copy into the Cord.
   explicit Cord(absl::string_view src);
+
+  /// Assigns a string to this Cord.
+  ///
+  /// @param src The string data to copy into the Cord.
+  /// @return A reference to this Cord.
   Cord& operator=(absl::string_view src);
 
-  // Creates a Cord from a `std::string&&` rvalue. These constructors are
-  // templated to avoid ambiguities for types that are convertible to both
-  // `absl::string_view` and `std::string`, such as `const char*`.
+  /// Creates a Cord from a `std::string&&` rvalue.
+  ///
+  /// These constructors are templated to avoid ambiguities for types that are
+  /// convertible to both `absl::string_view` and `std::string`, such as
+  /// `const char*`.
+  ///
+  /// @tparam T The string type being consumed.
+  /// @param src The string whose contents are moved into the Cord.
   template <typename T, EnableIfString<T> = 0>
   explicit Cord(T&& src);
+
+  /// Assigns a `std::string&&` rvalue to this Cord.
+  ///
+  /// @tparam T The string type being consumed.
+  /// @param src The string whose contents are moved into the Cord.
+  /// @return A reference to this Cord.
   template <typename T, EnableIfString<T> = 0>
   Cord& operator=(T&& src);
 
-  // Cord::~Cord()
-  //
-  // Destructs the Cord.
+  /// Destructs the Cord.
   ~Cord() {
     if (contents_.is_tree()) DestroyCordSlow();
   }
 
-  // MakeCordFromExternal()
-  //
-  // Creates a Cord that takes ownership of external string memory. The
-  // contents of `data` are not copied to the Cord; instead, the external
-  // memory is added to the Cord and reference-counted. This data may not be
-  // changed for the life of the Cord, though it may be prepended or appended
-  // to.
-  //
-  // `MakeCordFromExternal()` takes a callable "releaser" that is invoked when
-  // the reference count for `data` reaches zero. As noted above, this data must
-  // remain live until the releaser is invoked. The callable releaser also must:
-  //
-  //   * be move constructible
-  //   * support `void operator()(absl::string_view)` or `void operator()()`
-  //
-  // Example:
-  //
-  // Cord MakeCord(BlockPool* pool) {
-  //   Block* block = pool->NewBlock();
-  //   FillBlock(block);
-  //   return absl::MakeCordFromExternal(
-  //       block->ToStringView(),
-  //       [pool, block](absl::string_view v) {
-  //         pool->FreeBlock(block, v);
-  //       });
-  // }
-  //
-  // WARNING: Because a Cord can be reference-counted, it's likely a bug if your
-  // releaser doesn't do anything. For example, consider the following:
-  //
-  // void Foo(const char* buffer, int len) {
-  //   auto c = absl::MakeCordFromExternal(absl::string_view(buffer, len),
-  //                                       [](absl::string_view) {});
-  //
-  //   // BUG: If Bar() copies its cord for any reason, including keeping a
-  //   // substring of it, the lifetime of buffer might be extended beyond
-  //   // when Foo() returns.
-  //   Bar(c);
-  // }
+  /// Creates a Cord that takes ownership of external string memory.
+  ///
+  /// The contents of `data` are not copied to the Cord; instead, the external
+  /// memory is added to the Cord and reference-counted. This data may not be
+  /// changed for the life of the Cord, though it may be prepended or appended
+  /// to.
+  ///
+  /// `MakeCordFromExternal()` takes a callable "releaser" that is invoked when
+  /// the reference count for `data` reaches zero. As noted above, this data must
+  /// remain live until the releaser is invoked. The callable releaser also must:
+  ///
+  ///   * be move constructible
+  ///   * support `void operator()(absl::string_view)` or `void operator()()`
+  ///
+  /// Example:
+  ///
+  /// Cord MakeCord(BlockPool* pool) {
+  ///   Block* block = pool->NewBlock();
+  ///   FillBlock(block);
+  ///   return absl::MakeCordFromExternal(
+  ///       block->ToStringView(),
+  ///       [pool, block](absl::string_view v) {
+  ///         pool->FreeBlock(block, v);
+  ///       });
+  /// }
+  ///
+  /// WARNING: Because a Cord can be reference-counted, it's likely a bug if your
+  /// releaser doesn't do anything. For example, consider the following:
+  ///
+  /// void Foo(const char* buffer, int len) {
+  ///   auto c = absl::MakeCordFromExternal(absl::string_view(buffer, len),
+  ///                                       [](absl::string_view) {});
+  ///
+  ///   // BUG: If Bar() copies its cord for any reason, including keeping a
+  ///   // substring of it, the lifetime of buffer might be extended beyond
+  ///   // when Foo() returns.
+  ///   Bar(c);
+  /// }
+  ///
+  /// @tparam Releaser The callable type invoked when the data is released.
+  /// @param data The external memory the Cord takes ownership of.
+  /// @param releaser The callable invoked once the reference count reaches zero.
+  /// @return A Cord referencing the external memory.
   template <typename Releaser>
   friend Cord MakeCordFromExternal(absl::string_view data, Releaser&& releaser);
 
-  // Cord::Clear()
-  //
-  // Releases the Cord data. Any nodes that share data with other Cords, if
-  // applicable, will have their reference counts reduced by 1.
+  /// Releases the Cord data.
+  ///
+  /// Any nodes that share data with other Cords, if applicable, will have their
+  /// reference counts reduced by 1.
   ABSL_ATTRIBUTE_REINITIALIZES void Clear();
 
-  // Cord::Append()
-  //
-  // Appends data to the Cord, which may come from another Cord or other string
-  // data.
+  /// Appends another Cord to this Cord.
+  ///
+  /// @param src The Cord to append.
   void Append(const Cord& src);
+
+  /// Appends another Cord to this Cord by moving from it.
+  ///
+  /// @param src The Cord to append.
   void Append(Cord&& src);
+
+  /// Appends string data to this Cord.
+  ///
+  /// @param src The string data to append.
   void Append(absl::string_view src);
+
+  /// Appends string data to this Cord.
+  ///
+  /// @tparam T The string type being consumed.
+  /// @param src The string whose contents are appended.
   template <typename T, EnableIfString<T> = 0>
   void Append(T&& src);
 
-  // Appends `buffer` to this cord, unless `buffer` has a zero length in which
-  // case this method has no effect on this cord instance.
-  // This method is guaranteed to consume `buffer`.
+  /// Appends `buffer` to this cord, unless `buffer` has a zero length in which
+  /// case this method has no effect on this cord instance.
+  ///
+  /// This method is guaranteed to consume `buffer`.
+  ///
+  /// @param buffer The buffer whose contents are appended.
   void Append(CordBuffer buffer);
 
-  // Returns a CordBuffer, re-using potential existing capacity in this cord.
-  //
-  // Cord instances may have additional unused capacity in the last (or first)
-  // nodes of the underlying tree to facilitate amortized growth. This method
-  // allows applications to explicitly use this spare capacity if available,
-  // or create a new CordBuffer instance otherwise.
-  // If this cord has a final non-shared node with at least `min_capacity`
-  // available, then this method will return that buffer including its data
-  // contents. I.e.; the returned buffer will have a non-zero length, and
-  // a capacity of at least `buffer.length + min_capacity`. Otherwise, this
-  // method will return `CordBuffer::CreateWithDefaultLimit(capacity)`.
-  //
-  // Below an example of using GetAppendBuffer. Notice that in this example we
-  // use `GetAppendBuffer()` only on the first iteration. As we know nothing
-  // about any initial extra capacity in `cord`, we may be able to use the extra
-  // capacity. But as we add new buffers with fully utilized contents after that
-  // we avoid calling `GetAppendBuffer()` on subsequent iterations: while this
-  // works fine, it results in an unnecessary inspection of cord contents:
-  //
-  //   void AppendRandomDataToCord(absl::Cord &cord, size_t n) {
-  //     bool first = true;
-  //     while (n > 0) {
-  //       CordBuffer buffer = first ? cord.GetAppendBuffer(n)
-  //                                 : CordBuffer::CreateWithDefaultLimit(n);
-  //       absl::Span<char> data = buffer.available_up_to(n);
-  //       FillRandomValues(data.data(), data.size());
-  //       buffer.IncreaseLengthBy(data.size());
-  //       cord.Append(std::move(buffer));
-  //       n -= data.size();
-  //       first = false;
-  //     }
-  //   }
+  /// Returns a CordBuffer, re-using potential existing capacity in this cord.
+  ///
+  /// Cord instances may have additional unused capacity in the last (or first)
+  /// nodes of the underlying tree to facilitate amortized growth. This method
+  /// allows applications to explicitly use this spare capacity if available,
+  /// or create a new CordBuffer instance otherwise.
+  /// If this cord has a final non-shared node with at least `min_capacity`
+  /// available, then this method will return that buffer including its data
+  /// contents. I.e.; the returned buffer will have a non-zero length, and
+  /// a capacity of at least `buffer.length + min_capacity`. Otherwise, this
+  /// method will return `CordBuffer::CreateWithDefaultLimit(capacity)`.
+  ///
+  /// Below an example of using GetAppendBuffer. Notice that in this example we
+  /// use `GetAppendBuffer()` only on the first iteration. As we know nothing
+  /// about any initial extra capacity in `cord`, we may be able to use the extra
+  /// capacity. But as we add new buffers with fully utilized contents after that
+  /// we avoid calling `GetAppendBuffer()` on subsequent iterations: while this
+  /// works fine, it results in an unnecessary inspection of cord contents:
+  ///
+  ///   void AppendRandomDataToCord(absl::Cord &cord, size_t n) {
+  ///     bool first = true;
+  ///     while (n > 0) {
+  ///       CordBuffer buffer = first ? cord.GetAppendBuffer(n)
+  ///                                 : CordBuffer::CreateWithDefaultLimit(n);
+  ///       absl::Span<char> data = buffer.available_up_to(n);
+  ///       FillRandomValues(data.data(), data.size());
+  ///       buffer.IncreaseLengthBy(data.size());
+  ///       cord.Append(std::move(buffer));
+  ///       n -= data.size();
+  ///       first = false;
+  ///     }
+  ///   }
+  ///
+  /// @param capacity The desired capacity of the returned buffer.
+  /// @param min_capacity The minimum extra capacity required to reuse existing
+  ///   spare capacity.
+  /// @return A CordBuffer reusing spare capacity when available.
   CordBuffer GetAppendBuffer(size_t capacity, size_t min_capacity = 16);
 
-  // Returns a CordBuffer, re-using potential existing capacity in this cord.
-  //
-  // This function is identical to `GetAppendBuffer`, except that in the case
-  // where a new `CordBuffer` is allocated, it is allocated using the provided
-  // custom limit instead of the default limit. `GetAppendBuffer` will default
-  // to `CordBuffer::CreateWithDefaultLimit(capacity)` whereas this method
-  // will default to `CordBuffer::CreateWithCustomLimit(block_size, capacity)`.
-  // This method is equivalent to `GetAppendBuffer` if `block_size` is zero.
-  // See the documentation for `CreateWithCustomLimit` for more details on the
-  // restrictions and legal values for `block_size`.
+  /// Returns a CordBuffer, re-using potential existing capacity in this cord.
+  ///
+  /// This function is identical to `GetAppendBuffer`, except that in the case
+  /// where a new `CordBuffer` is allocated, it is allocated using the provided
+  /// custom limit instead of the default limit. `GetAppendBuffer` will default
+  /// to `CordBuffer::CreateWithDefaultLimit(capacity)` whereas this method
+  /// will default to `CordBuffer::CreateWithCustomLimit(block_size, capacity)`.
+  /// This method is equivalent to `GetAppendBuffer` if `block_size` is zero.
+  /// See the documentation for `CreateWithCustomLimit` for more details on the
+  /// restrictions and legal values for `block_size`.
+  ///
+  /// @param block_size The custom allocation limit for a newly allocated buffer.
+  /// @param capacity The desired capacity of the returned buffer.
+  /// @param min_capacity The minimum extra capacity required to reuse existing
+  ///   spare capacity.
+  /// @return A CordBuffer reusing spare capacity when available.
   CordBuffer GetCustomAppendBuffer(size_t block_size, size_t capacity,
                                    size_t min_capacity = 16);
 
-  // Cord::Prepend()
-  //
-  // Prepends data to the Cord, which may come from another Cord or other string
-  // data.
+  /// Prepends another Cord to this Cord.
+  ///
+  /// @param src The Cord to prepend.
   void Prepend(const Cord& src);
+
+  /// Prepends string data to this Cord.
+  ///
+  /// @param src The string data to prepend.
   void Prepend(absl::string_view src);
+
+  /// Prepends string data to this Cord.
+  ///
+  /// @tparam T The string type being consumed.
+  /// @param src The string whose contents are prepended.
   template <typename T, EnableIfString<T> = 0>
   void Prepend(T&& src);
 
-  // Prepends `buffer` to this cord, unless `buffer` has a zero length in which
-  // case this method has no effect on this cord instance.
-  // This method is guaranteed to consume `buffer`.
+  /// Prepends `buffer` to this cord, unless `buffer` has a zero length in which
+  /// case this method has no effect on this cord instance.
+  ///
+  /// This method is guaranteed to consume `buffer`.
+  ///
+  /// @param buffer The buffer whose contents are prepended.
   void Prepend(CordBuffer buffer);
 
-  // Cord::RemovePrefix()
-  //
-  // Removes the first `n` bytes of a Cord.
+  /// Removes the first `n` bytes of a Cord.
+  ///
+  /// @param n The number of bytes to remove from the front.
   void RemovePrefix(size_t n);
+
+  /// Removes the last `n` bytes of a Cord.
+  ///
+  /// @param n The number of bytes to remove from the end.
   void RemoveSuffix(size_t n);
 
-  // Cord::Subcord()
-  //
-  // Returns a new Cord representing the subrange [pos, pos + new_size) of
-  // *this. If pos >= size(), the result is empty(). If
-  // (pos + new_size) >= size(), the result is the subrange [pos, size()).
+  /// Returns a new Cord representing the subrange [pos, pos + new_size) of
+  /// *this.
+  ///
+  /// If pos >= size(), the result is empty(). If (pos + new_size) >= size(),
+  /// the result is the subrange [pos, size()).
+  ///
+  /// @param pos The starting byte offset of the subrange.
+  /// @param new_size The number of bytes in the subrange.
+  /// @return A Cord holding the requested subrange.
   Cord Subcord(size_t pos, size_t new_size) const;
 
-  // Cord::swap()
-  //
-  // Swaps the contents of the Cord with `other`.
+  /// Swaps the contents of the Cord with `other`.
+  ///
+  /// @param other The Cord to swap contents with.
   void swap(Cord& other) noexcept;
 
-  // swap()
-  //
-  // Swaps the contents of two Cords.
+  /// Swaps the contents of two Cords.
+  ///
+  /// @param x The first Cord.
+  /// @param y The second Cord.
   friend void swap(Cord& x, Cord& y) noexcept { x.swap(y); }
 
-  // Cord::size()
-  //
-  // Returns the size of the Cord.
+  /// Returns the size of the Cord.
+  ///
+  /// @return The number of bytes held by the Cord.
   size_t size() const;
 
-  // Cord::empty()
-  //
-  // Determines whether the given Cord is empty, returning `true` if so.
+  /// Determines whether the given Cord is empty, returning `true` if so.
+  ///
+  /// @return `true` if the Cord holds no data.
   bool empty() const;
 
-  // Cord::EstimatedMemoryUsage()
-  //
-  // Returns the *approximate* number of bytes held by this cord.
-  // See CordMemoryAccounting for more information on the accounting method.
+  /// Returns the *approximate* number of bytes held by this cord.
+  ///
+  /// See CordMemoryAccounting for more information on the accounting method.
+  ///
+  /// @param accounting_method The accounting mode used for the estimate.
+  /// @return The approximate number of bytes held by the Cord.
   size_t EstimatedMemoryUsage(CordMemoryAccounting accounting_method =
                                   CordMemoryAccounting::kTotal) const;
 
-  // Cord::Compare()
-  //
-  // Compares 'this' Cord with rhs. This function and its relatives treat Cords
-  // as sequences of unsigned bytes. The comparison is a straightforward
-  // lexicographic comparison. `Cord::Compare()` returns values as follows:
-  //
-  //   -1  'this' Cord is smaller
-  //    0  two Cords are equal
-  //    1  'this' Cord is larger
+  /// Compares 'this' Cord with rhs.
+  ///
+  /// This function and its relatives treat Cords as sequences of unsigned
+  /// bytes. The comparison is a straightforward lexicographic comparison.
+  /// `Cord::Compare()` returns values as follows:
+  ///
+  ///   -1  'this' Cord is smaller
+  ///    0  two Cords are equal
+  ///    1  'this' Cord is larger
+  ///
+  /// @param rhs The string data to compare against.
+  /// @return -1, 0, or 1 as described above.
   int Compare(absl::string_view rhs) const;
+
+  /// Compares 'this' Cord with another Cord.
+  ///
+  /// @param rhs The Cord to compare against.
+  /// @return -1, 0, or 1 for less than, equal, or greater than.
   int Compare(const Cord& rhs) const;
 
-  // Cord::StartsWith()
-  //
-  // Determines whether the Cord starts with the passed string data `rhs`.
+  /// Determines whether the Cord starts with the passed Cord `rhs`.
+  ///
+  /// @param rhs The prefix Cord to test for.
+  /// @return `true` if the Cord starts with `rhs`.
   bool StartsWith(const Cord& rhs) const;
+
+  /// Determines whether the Cord starts with the passed string data `rhs`.
+  ///
+  /// @param rhs The prefix string to test for.
+  /// @return `true` if the Cord starts with `rhs`.
   bool StartsWith(absl::string_view rhs) const;
 
-  // Cord::EndsWith()
-  //
-  // Determines whether the Cord ends with the passed string data `rhs`.
+  /// Determines whether the Cord ends with the passed string data `rhs`.
+  ///
+  /// @param rhs The suffix string to test for.
+  /// @return `true` if the Cord ends with `rhs`.
   bool EndsWith(absl::string_view rhs) const;
+
+  /// Determines whether the Cord ends with the passed Cord `rhs`.
+  ///
+  /// @param rhs The suffix Cord to test for.
+  /// @return `true` if the Cord ends with `rhs`.
   bool EndsWith(const Cord& rhs) const;
 
-  // Cord::Contains()
-  //
-  // Determines whether the Cord contains the passed string data `rhs`.
+  /// Determines whether the Cord contains the passed string data `rhs`.
+  ///
+  /// @param rhs The string to search for.
+  /// @return `true` if the Cord contains `rhs`.
   bool Contains(absl::string_view rhs) const;
+
+  /// Determines whether the Cord contains the passed Cord `rhs`.
+  ///
+  /// @param rhs The Cord to search for.
+  /// @return `true` if the Cord contains `rhs`.
   bool Contains(const Cord& rhs) const;
 
-  // Cord::operator std::string()
-  //
-  // Converts a Cord into a `std::string()`. This operator is marked explicit to
-  // prevent unintended Cord usage in functions that take a string.
+  /// Converts a Cord into a `std::string()`.
+  ///
+  /// This operator is marked explicit to prevent unintended Cord usage in
+  /// functions that take a string.
+  ///
+  /// @return A `std::string` holding a copy of the Cord's contents.
   explicit operator std::string() const;
 
-  // CopyCordToString()
-  //
-  // Copies the contents of a `src` Cord into a `*dst` string.
-  //
-  // This function optimizes the case of reusing the destination string since it
-  // can reuse previously allocated capacity. However, this function does not
-  // guarantee that pointers previously returned by `dst->data()` remain valid
-  // even if `*dst` had enough capacity to hold `src`. If `*dst` is a new
-  // object, prefer to simply use the conversion operator to `std::string`.
+  /// Copies the contents of a `src` Cord into a `*dst` string.
+  ///
+  /// This function optimizes the case of reusing the destination string since it
+  /// can reuse previously allocated capacity. However, this function does not
+  /// guarantee that pointers previously returned by `dst->data()` remain valid
+  /// even if `*dst` had enough capacity to hold `src`. If `*dst` is a new
+  /// object, prefer to simply use the conversion operator to `std::string`.
+  ///
+  /// @param src The Cord whose contents are copied.
+  /// @param dst The string that receives the copied contents.
   friend void CopyCordToString(const Cord& src, std::string* absl_nonnull dst);
 
-  // AppendCordToString()
-  //
-  // Appends the contents of a `src` Cord to a `*dst` string.
-  //
-  // This function optimizes the case of appending to a non-empty destination
-  // string. If `*dst` already has capacity to store the contents of the cord,
-  // this function does not invalidate pointers previously returned by
-  // `dst->data()`. If `*dst` is a new object, prefer to simply use the
-  // conversion operator to `std::string`.
+  /// Appends the contents of a `src` Cord to a `*dst` string.
+  ///
+  /// This function optimizes the case of appending to a non-empty destination
+  /// string. If `*dst` already has capacity to store the contents of the cord,
+  /// this function does not invalidate pointers previously returned by
+  /// `dst->data()`. If `*dst` is a new object, prefer to simply use the
+  /// conversion operator to `std::string`.
+  ///
+  /// @param src The Cord whose contents are appended.
+  /// @param dst The string that receives the appended contents.
   friend void AppendCordToString(const Cord& src,
                                  std::string* absl_nonnull dst);
 
-  // CopyCordToSpan()
-  //
-  // Copies up to `dst.size()` bytes starting from the beginning of `src` to
-  // `dst`.  Returns the number of bytes copied.
+  /// Copies up to `dst.size()` bytes starting from the beginning of `src` to
+  /// `dst`.
+  ///
+  /// @param src The Cord to copy from.
+  /// @param dst The span that receives the copied bytes.
+  /// @return The number of bytes copied.
   friend size_t CopyCordToSpan(const Cord& src, absl::Span<char> dst);
 
   class CharIterator;
 
-  //----------------------------------------------------------------------------
-  // Cord::ChunkIterator
-  //----------------------------------------------------------------------------
-  //
-  // A `Cord::ChunkIterator` allows iteration over the constituent chunks of its
-  // Cord. Such iteration allows you to perform non-const operations on the data
-  // of a Cord without modifying it.
-  //
-  // Generally, you do not instantiate a `Cord::ChunkIterator` directly;
-  // instead, you create one implicitly through use of the `Cord::Chunks()`
-  // member function.
-  //
-  // The `Cord::ChunkIterator` has the following properties:
-  //
-  //   * The iterator is invalidated after any non-const operation on the
-  //     Cord object over which it iterates.
-  //   * The `string_view` returned by dereferencing a valid, non-`end()`
-  //     iterator is guaranteed to be non-empty.
-  //   * Two `ChunkIterator` objects can be compared equal if and only if they
-  //     remain valid and iterate over the same Cord.
-  //   * The iterator in this case is a proxy iterator; the `string_view`
-  //     returned by the iterator does not live inside the Cord, and its
-  //     lifetime is limited to the lifetime of the iterator itself. To help
-  //     prevent lifetime issues, `ChunkIterator::reference` is not a true
-  //     reference type and is equivalent to `value_type`.
-  //   * The iterator keeps state that can grow for Cords that contain many
-  //     nodes and are imbalanced due to sharing. Prefer to pass this type by
-  //     const reference instead of by value.
+  /// Iterates over the constituent chunks of a `Cord`.
+  ///
+  /// A `Cord::ChunkIterator` allows iteration over the constituent chunks of its
+  /// Cord. Such iteration allows you to perform non-const operations on the data
+  /// of a Cord without modifying it.
+  ///
+  /// Generally, you do not instantiate a `Cord::ChunkIterator` directly;
+  /// instead, you create one implicitly through use of the `Cord::Chunks()`
+  /// member function.
+  ///
+  /// The `Cord::ChunkIterator` has the following properties:
+  ///
+  ///   * The iterator is invalidated after any non-const operation on the
+  ///     Cord object over which it iterates.
+  ///   * The `string_view` returned by dereferencing a valid, non-`end()`
+  ///     iterator is guaranteed to be non-empty.
+  ///   * Two `ChunkIterator` objects can be compared equal if and only if they
+  ///     remain valid and iterate over the same Cord.
+  ///   * The iterator in this case is a proxy iterator; the `string_view`
+  ///     returned by the iterator does not live inside the Cord, and its
+  ///     lifetime is limited to the lifetime of the iterator itself. To help
+  ///     prevent lifetime issues, `ChunkIterator::reference` is not a true
+  ///     reference type and is equivalent to `value_type`.
+  ///   * The iterator keeps state that can grow for Cords that contain many
+  ///     nodes and are imbalanced due to sharing. Prefer to pass this type by
+  ///     const reference instead of by value.
   class ChunkIterator {
    public:
+    /// The iterator category tag (input iterator).
     using iterator_category = std::input_iterator_tag;
+    /// The type of the values iterated over.
     using value_type = absl::string_view;
+    /// The type used to represent distances between iterators.
     using difference_type = ptrdiff_t;
+    /// The pointer type for the iterated values.
     using pointer = const value_type* absl_nonnull;
+    /// The reference type for the iterated values.
     using reference = value_type;
 
+    /// Constructs an iterator in the end / singular state.
     ChunkIterator() = default;
 
+    /// Advances the iterator to the next chunk.
+    ///
+    /// @return A reference to this iterator after advancing.
     ChunkIterator& operator++();
-    ChunkIterator operator++(int);
+
+    /// Advances the iterator to the next chunk.
+    ///
+    /// @param unused Unused parameter.
+    /// @return A copy of the iterator before advancing.
+    ChunkIterator operator++(int unused);
+
+    /// Compares two iterators for equality.
+    ///
+    /// @param other The iterator to compare against.
+    /// @return `true` if both iterators are equal.
     bool operator==(const ChunkIterator& other) const;
+
+    /// Compares two iterators for inequality.
+    ///
+    /// @param other The iterator to compare against.
+    /// @return `true` if the iterators are not equal.
     bool operator!=(const ChunkIterator& other) const;
+
+    /// Dereferences the iterator.
+    ///
+    /// @return The chunk the iterator currently points to.
     reference operator*() const;
+
+    /// Member-access dereference of the iterator.
+    ///
+    /// @return A pointer to the chunk the iterator currently points to.
     pointer operator->() const;
 
     friend class Cord;
@@ -533,123 +684,164 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
     CordRepBtreeReader btree_reader_;
   };
 
-  // Cord::chunk_begin()
-  //
-  // Returns an iterator to the first chunk of the `Cord`.
-  //
-  // Generally, prefer using `Cord::Chunks()` within a range-based for loop for
-  // iterating over the chunks of a Cord. This method may be useful for getting
-  // a `ChunkIterator` where range-based for-loops are not useful.
-  //
-  // Example:
-  //
-  //   absl::Cord::ChunkIterator FindAsChunk(const absl::Cord& c,
-  //                                         absl::string_view s) {
-  //     return std::find(c.chunk_begin(), c.chunk_end(), s);
-  //   }
+  /// Returns an iterator to the first chunk of the `Cord`.
+  ///
+  /// Generally, prefer using `Cord::Chunks()` within a range-based for loop for
+  /// iterating over the chunks of a Cord. This method may be useful for getting
+  /// a `ChunkIterator` where range-based for-loops are not useful.
+  ///
+  /// Example:
+  ///
+  ///   absl::Cord::ChunkIterator FindAsChunk(const absl::Cord& c,
+  ///                                         absl::string_view s) {
+  ///     return std::find(c.chunk_begin(), c.chunk_end(), s);
+  ///   }
+  ///
+  /// @return An iterator to the first chunk of the Cord.
   ChunkIterator chunk_begin() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Cord::chunk_end()
-  //
-  // Returns an iterator one increment past the last chunk of the `Cord`.
-  //
-  // Generally, prefer using `Cord::Chunks()` within a range-based for loop for
-  // iterating over the chunks of a Cord. This method may be useful for getting
-  // a `ChunkIterator` where range-based for-loops may not be available.
+  /// Returns an iterator one increment past the last chunk of the `Cord`.
+  ///
+  /// Generally, prefer using `Cord::Chunks()` within a range-based for loop for
+  /// iterating over the chunks of a Cord. This method may be useful for getting
+  /// a `ChunkIterator` where range-based for-loops may not be available.
+  ///
+  /// @return An iterator one past the last chunk of the Cord.
   ChunkIterator chunk_end() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  //----------------------------------------------------------------------------
-  // Cord::ChunkRange
-  //----------------------------------------------------------------------------
-  //
-  // `ChunkRange` is a helper class for iterating over the chunks of the `Cord`,
-  // producing an iterator which can be used within a range-based for loop.
-  // Construction of a `ChunkRange` will return an iterator pointing to the
-  // first chunk of the Cord. Generally, do not construct a `ChunkRange`
-  // directly; instead, prefer to use the `Cord::Chunks()` method.
-  //
-  // Implementation note: `ChunkRange` is simply a convenience wrapper over
-  // `Cord::chunk_begin()` and `Cord::chunk_end()`.
+  /// A range over the chunks of a `Cord`, usable in a range-based for loop.
+  ///
+  /// `ChunkRange` is a helper class for iterating over the chunks of the `Cord`,
+  /// producing an iterator which can be used within a range-based for loop.
+  /// Construction of a `ChunkRange` will return an iterator pointing to the
+  /// first chunk of the Cord. Generally, do not construct a `ChunkRange`
+  /// directly; instead, prefer to use the `Cord::Chunks()` method.
+  ///
+  /// Implementation note: `ChunkRange` is simply a convenience wrapper over
+  /// `Cord::chunk_begin()` and `Cord::chunk_end()`.
   class ChunkRange {
    public:
     // Fulfill minimum c++ container requirements [container.requirements]
     // These (partial) container type definitions allow ChunkRange to be used
     // in various utilities expecting a subset of [container.requirements].
     // For example, the below enables using `::testing::ElementsAre(...)`
+    /// The type of the values in the range.
     using value_type = absl::string_view;
+    /// The reference type for the values in the range.
     using reference = value_type&;
+    /// The const reference type for the values in the range.
     using const_reference = const value_type&;
+    /// The iterator type for the range.
     using iterator = ChunkIterator;
+    /// The const iterator type for the range.
     using const_iterator = ChunkIterator;
 
+    /// Constructs a range over the chunks of `cord`.
+    ///
+    /// @param cord The Cord whose chunks are iterated over.
     explicit ChunkRange(const Cord* absl_nonnull cord) : cord_(cord) {}
 
+    /// Returns an iterator to the first chunk of the range.
+    ///
+    /// @return An iterator to the first chunk.
     ChunkIterator begin() const;
+
+    /// Returns an iterator one past the last chunk of the range.
+    ///
+    /// @return An iterator one past the last chunk.
     ChunkIterator end() const;
 
    private:
     const Cord* absl_nonnull cord_;
   };
 
-  // Cord::Chunks()
-  //
-  // Returns a `Cord::ChunkRange` for iterating over the chunks of a `Cord` with
-  // a range-based for-loop. For most iteration tasks on a Cord, use
-  // `Cord::Chunks()` to retrieve this iterator.
-  //
-  // Example:
-  //
-  //   void ProcessChunks(const Cord& cord) {
-  //     for (absl::string_view chunk : cord.Chunks()) { ... }
-  //   }
-  //
-  // Note that the ordinary caveats of temporary lifetime extension apply:
-  //
-  //   void Process() {
-  //     for (absl::string_view chunk : CordFactory().Chunks()) {
-  //       // The temporary Cord returned by CordFactory has been destroyed!
-  //     }
-  //   }
+  /// Returns a `Cord::ChunkRange` for iterating over the chunks of a `Cord` with
+  /// a range-based for-loop.
+  ///
+  /// For most iteration tasks on a Cord, use `Cord::Chunks()` to retrieve this
+  /// iterator.
+  ///
+  /// Example:
+  ///
+  ///   void ProcessChunks(const Cord& cord) {
+  ///     for (absl::string_view chunk : cord.Chunks()) { ... }
+  ///   }
+  ///
+  /// Note that the ordinary caveats of temporary lifetime extension apply:
+  ///
+  ///   void Process() {
+  ///     for (absl::string_view chunk : CordFactory().Chunks()) {
+  ///       // The temporary Cord returned by CordFactory has been destroyed!
+  ///     }
+  ///   }
+  ///
+  /// @return A range over the chunks of the Cord.
   ChunkRange Chunks() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  //----------------------------------------------------------------------------
-  // Cord::CharIterator
-  //----------------------------------------------------------------------------
-  //
-  // A `Cord::CharIterator` allows iteration over the constituent characters of
-  // a `Cord`.
-  //
-  // Generally, you do not instantiate a `Cord::CharIterator` directly; instead,
-  // you create one implicitly through use of the `Cord::Chars()` member
-  // function.
-  //
-  // A `Cord::CharIterator` has the following properties:
-  //
-  //   * The iterator is invalidated after any non-const operation on the
-  //     Cord object over which it iterates.
-  //   * Two `CharIterator` objects can be compared equal if and only if they
-  //     remain valid and iterate over the same Cord.
-  //   * The iterator keeps state that can grow for Cords that contain many
-  //     nodes and are imbalanced due to sharing. Prefer to pass this type by
-  //     const reference instead of by value.
-  //   * This type cannot act as a forward iterator because a `Cord` can reuse
-  //     sections of memory. This fact violates the requirement for forward
-  //     iterators to compare equal if dereferencing them returns the same
-  //     object.
+  /// Iterates over the constituent characters of a `Cord`.
+  ///
+  /// A `Cord::CharIterator` allows iteration over the constituent characters of
+  /// a `Cord`.
+  ///
+  /// Generally, you do not instantiate a `Cord::CharIterator` directly; instead,
+  /// you create one implicitly through use of the `Cord::Chars()` member
+  /// function.
+  ///
+  /// A `Cord::CharIterator` has the following properties:
+  ///
+  ///   * The iterator is invalidated after any non-const operation on the
+  ///     Cord object over which it iterates.
+  ///   * Two `CharIterator` objects can be compared equal if and only if they
+  ///     remain valid and iterate over the same Cord.
+  ///   * The iterator keeps state that can grow for Cords that contain many
+  ///     nodes and are imbalanced due to sharing. Prefer to pass this type by
+  ///     const reference instead of by value.
+  ///   * This type cannot act as a forward iterator because a `Cord` can reuse
+  ///     sections of memory. This fact violates the requirement for forward
+  ///     iterators to compare equal if dereferencing them returns the same
+  ///     object.
   class CharIterator {
    public:
+    /// The iterator category tag (input iterator).
     using iterator_category = std::input_iterator_tag;
+    /// The type of the values iterated over.
     using value_type = char;
+    /// The type used to represent distances between iterators.
     using difference_type = ptrdiff_t;
+    /// The pointer type for the iterated values.
     using pointer = const char* absl_nonnull;
+    /// The reference type for the iterated values.
     using reference = const char&;
 
+    /// Constructs an iterator in the end / singular state.
     CharIterator() = default;
 
+    /// Advances the iterator to the next character.
+    ///
+    /// @return A reference to this iterator after advancing.
     CharIterator& operator++();
-    CharIterator operator++(int);
+
+    /// Advances the iterator to the next character.
+    ///
+    /// @param unused Unused parameter.
+    /// @return A copy of the iterator before advancing.
+    CharIterator operator++(int unused);
+
+    /// Compares two iterators for equality.
+    ///
+    /// @param other The iterator to compare against.
+    /// @return `true` if both iterators are equal.
     bool operator==(const CharIterator& other) const;
+
+    /// Compares two iterators for inequality.
+    ///
+    /// @param other The iterator to compare against.
+    /// @return `true` if the iterators are not equal.
     bool operator!=(const CharIterator& other) const;
+
+    /// Dereferences the iterator.
+    ///
+    /// @return A reference to the character the iterator points to.
     reference operator*() const;
 
     friend Cord;
@@ -661,146 +853,189 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
     ChunkIterator chunk_iterator_;
   };
 
-  // Cord::AdvanceAndRead()
-  //
-  // Advances the `Cord::CharIterator` by `n_bytes` and returns the bytes
-  // advanced as a separate `Cord`. `n_bytes` must be less than or equal to the
-  // number of bytes within the Cord; otherwise, behavior is undefined. It is
-  // valid to pass `char_end()` and `0`.
+  /// Advances the `Cord::CharIterator` by `n_bytes` and returns the bytes
+  /// advanced as a separate `Cord`.
+  ///
+  /// `n_bytes` must be less than or equal to the number of bytes within the
+  /// Cord; otherwise, behavior is undefined. It is valid to pass `char_end()`
+  /// and `0`.
+  ///
+  /// @param it The iterator to advance.
+  /// @param n_bytes The number of bytes to advance and read.
+  /// @return A Cord holding the bytes advanced over.
   static Cord AdvanceAndRead(CharIterator* absl_nonnull it, size_t n_bytes);
 
-  // Cord::Advance()
-  //
-  // Advances the `Cord::CharIterator` by `n_bytes`. `n_bytes` must be less than
-  // or equal to the number of bytes remaining within the Cord; otherwise,
-  // behavior is undefined. It is valid to pass `char_end()` and `0`.
+  /// Advances the `Cord::CharIterator` by `n_bytes`.
+  ///
+  /// `n_bytes` must be less than or equal to the number of bytes remaining
+  /// within the Cord; otherwise, behavior is undefined. It is valid to pass
+  /// `char_end()` and `0`.
+  ///
+  /// @param it The iterator to advance.
+  /// @param n_bytes The number of bytes to advance.
   static void Advance(CharIterator* absl_nonnull it, size_t n_bytes);
 
-  // Cord::ChunkRemaining()
-  //
-  // Returns the longest contiguous view starting at the iterator's position.
-  //
-  // `it` must be dereferenceable.
+  /// Returns the longest contiguous view starting at the iterator's position.
+  ///
+  /// `it` must be dereferenceable.
+  ///
+  /// @param it The iterator whose remaining chunk is returned.
+  /// @return A view of the longest contiguous chunk at the iterator's position.
   static absl::string_view ChunkRemaining(const CharIterator& it);
 
-  // Cord::Distance()
-  //
-  // Returns the distance between `first` and `last`, as if
-  // `std::distance(first, last)` was called.
+  /// Returns the distance between `first` and `last`, as if
+  /// `std::distance(first, last)` was called.
+  ///
+  /// @param first The starting iterator.
+  /// @param last The ending iterator.
+  /// @return The number of characters between `first` and `last`.
   static ptrdiff_t Distance(const CharIterator& first,
                             const CharIterator& last);
 
-  // Cord::char_begin()
-  //
-  // Returns an iterator to the first character of the `Cord`.
-  //
-  // Generally, prefer using `Cord::Chars()` within a range-based for loop for
-  // iterating over the chunks of a Cord. This method may be useful for getting
-  // a `CharIterator` where range-based for-loops may not be available.
+  /// Returns an iterator to the first character of the `Cord`.
+  ///
+  /// Generally, prefer using `Cord::Chars()` within a range-based for loop for
+  /// iterating over the chunks of a Cord. This method may be useful for getting
+  /// a `CharIterator` where range-based for-loops may not be available.
+  ///
+  /// @return An iterator to the first character of the Cord.
   CharIterator char_begin() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Cord::char_end()
-  //
-  // Returns an iterator to one past the last character of the `Cord`.
-  //
-  // Generally, prefer using `Cord::Chars()` within a range-based for loop for
-  // iterating over the chunks of a Cord. This method may be useful for getting
-  // a `CharIterator` where range-based for-loops are not useful.
+  /// Returns an iterator to one past the last character of the `Cord`.
+  ///
+  /// Generally, prefer using `Cord::Chars()` within a range-based for loop for
+  /// iterating over the chunks of a Cord. This method may be useful for getting
+  /// a `CharIterator` where range-based for-loops are not useful.
+  ///
+  /// @return An iterator one past the last character of the Cord.
   CharIterator char_end() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Cord::CharRange
-  //
-  // `CharRange` is a helper class for iterating over the characters of a
-  // producing an iterator which can be used within a range-based for loop.
-  // Construction of a `CharRange` will return an iterator pointing to the first
-  // character of the Cord. Generally, do not construct a `CharRange` directly;
-  // instead, prefer to use the `Cord::Chars()` method shown below.
-  //
-  // Implementation note: `CharRange` is simply a convenience wrapper over
-  // `Cord::char_begin()` and `Cord::char_end()`.
+  /// A range over the characters of a `Cord`, usable in a range-based for loop.
+  ///
+  /// `CharRange` is a helper class for iterating over the characters of a
+  /// producing an iterator which can be used within a range-based for loop.
+  /// Construction of a `CharRange` will return an iterator pointing to the first
+  /// character of the Cord. Generally, do not construct a `CharRange` directly;
+  /// instead, prefer to use the `Cord::Chars()` method shown below.
+  ///
+  /// Implementation note: `CharRange` is simply a convenience wrapper over
+  /// `Cord::char_begin()` and `Cord::char_end()`.
   class CharRange {
    public:
     // Fulfill minimum c++ container requirements [container.requirements]
     // These (partial) container type definitions allow CharRange to be used
     // in various utilities expecting a subset of [container.requirements].
     // For example, the below enables using `::testing::ElementsAre(...)`
+    /// The type of the values in the range.
     using value_type = char;
+    /// The reference type for the values in the range.
     using reference = value_type&;
+    /// The const reference type for the values in the range.
     using const_reference = const value_type&;
+    /// The iterator type for the range.
     using iterator = CharIterator;
+    /// The const iterator type for the range.
     using const_iterator = CharIterator;
 
+    /// Constructs a range over the characters of `cord`.
+    ///
+    /// @param cord The Cord whose characters are iterated over.
     explicit CharRange(const Cord* absl_nonnull cord) : cord_(cord) {}
 
+    /// Returns an iterator to the first character of the range.
+    ///
+    /// @return An iterator to the first character.
     CharIterator begin() const;
+
+    /// Returns an iterator one past the last character of the range.
+    ///
+    /// @return An iterator one past the last character.
     CharIterator end() const;
 
    private:
     const Cord* absl_nonnull cord_;
   };
 
-  // Cord::Chars()
-  //
-  // Returns a `Cord::CharRange` for iterating over the characters of a `Cord`
-  // with a range-based for-loop. For most character-based iteration tasks on a
-  // Cord, use `Cord::Chars()` to retrieve this iterator.
-  //
-  // Example:
-  //
-  //   void ProcessCord(const Cord& cord) {
-  //     for (char c : cord.Chars()) { ... }
-  //   }
-  //
-  // Note that the ordinary caveats of temporary lifetime extension apply:
-  //
-  //   void Process() {
-  //     for (char c : CordFactory().Chars()) {
-  //       // The temporary Cord returned by CordFactory has been destroyed!
-  //     }
-  //   }
+  /// Returns a `Cord::CharRange` for iterating over the characters of a `Cord`
+  /// with a range-based for-loop.
+  ///
+  /// For most character-based iteration tasks on a Cord, use `Cord::Chars()` to
+  /// retrieve this iterator.
+  ///
+  /// Example:
+  ///
+  ///   void ProcessCord(const Cord& cord) {
+  ///     for (char c : cord.Chars()) { ... }
+  ///   }
+  ///
+  /// Note that the ordinary caveats of temporary lifetime extension apply:
+  ///
+  ///   void Process() {
+  ///     for (char c : CordFactory().Chars()) {
+  ///       // The temporary Cord returned by CordFactory has been destroyed!
+  ///     }
+  ///   }
+  ///
+  /// @return A range over the characters of the Cord.
   CharRange Chars() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Cord::operator[]
-  //
-  // Gets the "i"th character of the Cord and returns it, provided that
-  // 0 <= i < Cord.size().
-  //
-  // NOTE: This routine is reasonably efficient. It is roughly
-  // logarithmic based on the number of chunks that make up the cord. Still,
-  // if you need to iterate over the contents of a cord, you should
-  // use a CharIterator/ChunkIterator rather than call operator[]
-  // repeatedly in a loop.
+  /// Gets the "i"th character of the Cord and returns it, provided that
+  /// 0 <= i < Cord.size().
+  ///
+  /// NOTE: This routine is reasonably efficient. It is roughly
+  /// logarithmic based on the number of chunks that make up the cord. Still,
+  /// if you need to iterate over the contents of a cord, you should
+  /// use a CharIterator/ChunkIterator rather than call operator[]
+  /// repeatedly in a loop.
+  ///
+  /// @param i The index of the character to retrieve.
+  /// @return The character at index `i`.
   char operator[](size_t i) const;
 
-  // Cord::TryFlat()
-  //
-  // If this cord's representation is a single flat array, returns a
-  // string_view referencing that array.  Otherwise returns nullopt.
+  /// If this cord's representation is a single flat array, returns a
+  /// string_view referencing that array.  Otherwise returns nullopt.
+  ///
+  /// @return A view of the flat array, or `nullopt` if not flat.
   std::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Cord::Flatten()
-  //
-  // Flattens the cord into a single array and returns a view of the data.
-  //
-  // If the cord was already flat, the contents are not modified.
+  /// Flattens the cord into a single array and returns a view of the data.
+  ///
+  /// If the cord was already flat, the contents are not modified.
+  ///
+  /// @return A view of the flattened data.
   absl::string_view Flatten() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Cord::Find()
-  //
-  // Returns an iterator to the first occurrence of the substring `needle`.
-  //
-  // If the substring `needle` does not occur, `Cord::char_end()` is returned.
+  /// Returns an iterator to the first occurrence of the substring `needle`.
+  ///
+  /// If the substring `needle` does not occur, `Cord::char_end()` is returned.
+  ///
+  /// @param needle The substring to search for.
+  /// @return An iterator to the first occurrence, or `char_end()` if not found.
   CharIterator Find(absl::string_view needle) const;
+
+  /// Returns an iterator to the first occurrence of the Cord `needle`.
+  ///
+  /// If `needle` does not occur, `Cord::char_end()` is returned.
+  ///
+  /// @param needle The Cord to search for.
+  /// @return An iterator to the first occurrence, or `char_end()` if not found.
   CharIterator Find(const absl::Cord& needle) const;
 
-  // Supports absl::Cord as a sink object for absl::Format().
+  /// Supports absl::Cord as a sink object for absl::Format().
+  ///
+  /// @param cord The Cord that receives the formatted output.
+  /// @param part The formatted string data to append.
   friend void AbslFormatFlush(absl::Cord* absl_nonnull cord,
                               absl::string_view part) {
     cord->Append(part);
   }
 
-  // Support automatic stringification with absl::StrCat and absl::StrFormat.
+  /// Supports automatic stringification with absl::StrCat and absl::StrFormat.
+  ///
+  /// @tparam Sink The sink type receiving the stringified output.
+  /// @param sink The sink that receives the Cord's contents.
+  /// @param cord The Cord being stringified.
   template <typename Sink>
   friend void AbslStringify(Sink& sink, const absl::Cord& cord) {
     for (absl::string_view chunk : cord.Chunks()) {
@@ -808,29 +1043,37 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
     }
   }
 
-  // Cord::SetExpectedChecksum()
-  //
-  // Stores a checksum value with this non-empty cord instance, for later
-  // retrieval.
-  //
-  // The expected checksum is a number stored out-of-band, alongside the data.
-  // It is preserved across copies and assignments, but any mutations to a cord
-  // will cause it to lose its expected checksum.
-  //
-  // The expected checksum is not part of a Cord's value, and does not affect
-  // operations such as equality or hashing.
-  //
-  // This field is intended to store a CRC32C checksum for later validation, to
-  // help support end-to-end checksum workflows.  However, the Cord API itself
-  // does no CRC validation, and assigns no meaning to this number.
-  //
-  // This call has no effect if this cord is empty.
+  /// Stores a checksum value with this non-empty cord instance, for later
+  /// retrieval.
+  ///
+  /// The expected checksum is a number stored out-of-band, alongside the data.
+  /// It is preserved across copies and assignments, but any mutations to a cord
+  /// will cause it to lose its expected checksum.
+  ///
+  /// The expected checksum is not part of a Cord's value, and does not affect
+  /// operations such as equality or hashing.
+  ///
+  /// This field is intended to store a CRC32C checksum for later validation, to
+  /// help support end-to-end checksum workflows.  However, the Cord API itself
+  /// does no CRC validation, and assigns no meaning to this number.
+  ///
+  /// This call has no effect if this cord is empty.
+  ///
+  /// @param crc The checksum value to store with the Cord.
   void SetExpectedChecksum(uint32_t crc);
 
-  // Returns this cord's expected checksum, if it has one.  Otherwise, returns
-  // nullopt.
+  /// Returns this cord's expected checksum, if it has one.  Otherwise, returns
+  /// nullopt.
+  ///
+  /// @return The stored checksum, or `nullopt` if none was set.
   std::optional<uint32_t> ExpectedChecksum() const;
 
+  /// Combines the Cord's contents into a hash state.
+  ///
+  /// @tparam H The hash state type.
+  /// @param hash_state The hash state to combine into.
+  /// @param c The Cord being hashed.
+  /// @return The updated hash state.
   template <typename H>
   friend H AbslHashValue(H hash_state, const absl::Cord& c) {
     std::optional<absl::string_view> maybe_flat = c.TryFlat();
@@ -840,14 +1083,18 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
     return c.HashFragmented(std::move(hash_state));
   }
 
-  // Create a Cord with the contents of StringConstant<T>::value.
-  // No allocations will be done and no data will be copied.
-  // This is an INTERNAL API and subject to change or removal. This API can only
-  // be used by spelling absl::strings_internal::MakeStringConstant, which is
-  // also an internal API.
+  /// Creates a Cord with the contents of StringConstant<T>::value.
+  ///
+  /// No allocations will be done and no data will be copied.
+  /// This is an INTERNAL API and subject to change or removal. This API can only
+  /// be used by spelling absl::strings_internal::MakeStringConstant, which is
+  /// also an internal API.
+  ///
+  /// @tparam T The string-constant type providing the contents.
+  /// @param value The string constant that provides the contents.
   template <typename T>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr Cord(strings_internal::StringConstant<T>);
+  constexpr Cord(strings_internal::StringConstant<T> value);
 
  private:
   using CordRep = absl::cord_internal::CordRep;
@@ -884,21 +1131,40 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
     }
   }
 
+  /// Three-way compares two Cords.
+  ///
+  /// @param x The left-hand Cord.
+  /// @param y The right-hand Cord.
+  /// @return The ordering of `x` relative to `y`.
   friend inline std::strong_ordering operator<=>(const Cord& x, const Cord& y) {
     return ConvertCompareResultToStrongOrdering(x.Compare(y));
   }
 
+  /// Three-way compares a Cord with string data.
+  ///
+  /// @param lhs The left-hand Cord.
+  /// @param rhs The right-hand string data.
+  /// @return The ordering of `lhs` relative to `rhs`.
   friend inline std::strong_ordering operator<=>(const Cord& lhs,
                                                  absl::string_view rhs) {
     return ConvertCompareResultToStrongOrdering(lhs.Compare(rhs));
   }
 
+  /// Three-way compares string data with a Cord.
+  ///
+  /// @param lhs The left-hand string data.
+  /// @param rhs The right-hand Cord.
+  /// @return The ordering of `lhs` relative to `rhs`.
   friend inline std::strong_ordering operator<=>(absl::string_view lhs,
                                                  const Cord& rhs) {
     return ConvertCompareResultToStrongOrdering(-rhs.Compare(lhs));
   }
 #endif
 
+  /// Returns the internal Cordz sampling info for `cord`, for testing.
+  ///
+  /// @param cord The Cord to inspect.
+  /// @return The Cordz info for `cord`, or `nullptr` if not sampled.
   friend const CordzInfo* absl_nullable GetCordzInfoForTesting(
       const Cord& cord);
 
@@ -920,65 +1186,143 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
     static constexpr unsigned char kMaxInline = cord_internal::kMaxInline;
     static_assert(kMaxInline >= sizeof(absl::cord_internal::CordRep*));
 
+    /// Constructs an empty inline representation.
     constexpr InlineRep() : data_() {}
+    /// Constructs an inline representation with default-initialized data.
+    ///
+    /// @param init The default-init tag.
     explicit InlineRep(InlineData::DefaultInitType init) : data_(init) {}
+    /// Copy-constructs an inline representation.
+    ///
+    /// @param src The representation to copy from.
     InlineRep(const InlineRep& src);
+    /// Move-constructs an inline representation.
+    ///
+    /// @param src The representation to move from.
     InlineRep(InlineRep&& src);
+    /// Copy-assigns an inline representation.
+    ///
+    /// @param src The representation to copy from.
+    /// @return A reference to this representation.
     InlineRep& operator=(const InlineRep& src);
+    /// Move-assigns an inline representation.
+    ///
+    /// @param src The representation to move from.
+    /// @return A reference to this representation.
     InlineRep& operator=(InlineRep&& src) noexcept;
 
+    /// Constructs an inline representation from a view and an optional tree.
+    ///
+    /// @param sv The inline character data.
+    /// @param rep The tree representation, or `nullptr` for inline data.
     explicit constexpr InlineRep(absl::string_view sv,
                                  CordRep* absl_nullable rep);
 
+    /// Swaps the contents of this representation with `rhs`.
+    ///
+    /// @param rhs The representation to swap with.
     void Swap(InlineRep* absl_nonnull rhs);
+    /// Returns the number of bytes held by this representation.
+    ///
+    /// @return The size in bytes.
     size_t size() const;
-    // Returns nullptr if holding pointer
+    /// Returns a pointer to the inline character data.
+    ///
+    /// @return A pointer to the inline data, or `nullptr` if holding a pointer.
     const char* absl_nullable data() const;
-    // Discards pointer, if any
+    /// Sets the inline data, discarding any existing pointer.
+    ///
+    /// @param data The character data to store inline.
+    /// @param n The number of bytes to store.
     void set_data(const char* absl_nullable data, size_t n);
+    /// Reserves inline storage for `n` bytes and returns a writable pointer.
+    ///
+    /// @param n The number of bytes to reserve.
+    /// @return A pointer to the writable inline storage.
     char* absl_nonnull set_data(size_t n);  // Write data to the result
-    // Returns nullptr if holding bytes
+    /// Returns the tree representation, if any.
+    ///
+    /// @return The tree pointer, or `nullptr` if holding inline bytes.
     absl::cord_internal::CordRep* absl_nullable tree() const;
+    /// Returns the tree representation, which must exist.
+    ///
+    /// @return The tree pointer.
     absl::cord_internal::CordRep* absl_nonnull as_tree() const;
+    /// Returns a pointer to the inline character data.
+    ///
+    /// @return A pointer to the inline data.
     const char* absl_nonnull as_chars() const;
-    // Returns non-null iff was holding a pointer
+    /// Resets this representation to empty, releasing any tree.
+    ///
+    /// @return The former tree pointer, or `nullptr` if it held inline bytes.
     absl::cord_internal::CordRep* absl_nullable clear();
     // Converts to pointer if necessary.
+    /// Reduces the inline size by `n` bytes.
+    ///
+    /// @param n The number of bytes to remove. REQUIRES: holding data.
     void reduce_size(size_t n);    // REQUIRES: holding data
+    /// Removes the first `n` bytes of inline data.
+    ///
+    /// @param n The number of bytes to remove. REQUIRES: holding data.
     void remove_prefix(size_t n);  // REQUIRES: holding data
     void AppendArray(absl::string_view src, MethodIdentifier method);
     absl::string_view FindFlatStartPiece() const;
 
-    // Creates a CordRepFlat instance from the current inlined data with `extra'
-    // bytes of desired additional capacity.
+    /// Creates a CordRepFlat instance from the current inlined data with `extra'
+    /// bytes of desired additional capacity.
+    ///
+    /// @param extra The additional capacity to reserve.
+    /// @return A newly allocated flat node holding the inline data.
     CordRepFlat* absl_nonnull MakeFlatWithExtraCapacity(size_t extra);
 
-    // Sets the tree value for this instance. `rep` must not be null.
-    // Requires the current instance to hold a tree, and a lock to be held on
-    // any CordzInfo referenced by this instance. The latter is enforced through
-    // the CordzUpdateScope argument. If the current instance is sampled, then
-    // the CordzInfo instance is updated to reference the new `rep` value.
+    /// Sets the tree value for this instance. `rep` must not be null.
+    ///
+    /// Requires the current instance to hold a tree, and a lock to be held on
+    /// any CordzInfo referenced by this instance. The latter is enforced through
+    /// the CordzUpdateScope argument. If the current instance is sampled, then
+    /// the CordzInfo instance is updated to reference the new `rep` value.
+    ///
+    /// @param rep The tree value to set.
+    /// @param scope The update scope guarding any referenced CordzInfo.
     void SetTree(CordRep* absl_nonnull rep, const CordzUpdateScope& scope);
 
-    // Identical to SetTree(), except that `rep` is allowed to be null, in
-    // which case the current instance is reset to an empty value.
+    /// Identical to SetTree(), except that `rep` is allowed to be null, in
+    /// which case the current instance is reset to an empty value.
+    ///
+    /// @param rep The tree value to set, or `nullptr` to reset to empty.
+    /// @param scope The update scope guarding any referenced CordzInfo.
     void SetTreeOrEmpty(CordRep* absl_nullable rep,
                         const CordzUpdateScope& scope);
 
-    // Sets the tree value for this instance, and randomly samples this cord.
-    // This function disregards existing contents in `data_`, and should be
-    // called when a Cord is 'promoted' from an 'uninitialized' or 'inlined'
-    // value to a non-inlined (tree / ring) value.
+    /// Sets the tree value for this instance, and randomly samples this cord.
+    ///
+    /// This function disregards existing contents in `data_`, and should be
+    /// called when a Cord is 'promoted' from an 'uninitialized' or 'inlined'
+    /// value to a non-inlined (tree / ring) value.
+    ///
+    /// @param rep The tree value to set.
+    /// @param method The originating public API method, for Cordz sampling.
     void EmplaceTree(CordRep* absl_nonnull rep, MethodIdentifier method);
 
-    // Identical to EmplaceTree, except that it copies the parent stack from
-    // the provided `parent` data if the parent is sampled.
+    /// Identical to EmplaceTree, except that it copies the parent stack from
+    /// the provided `parent` data if the parent is sampled.
+    ///
+    /// @param rep The tree value to set.
+    /// @param parent The parent data whose sampling stack may be copied.
+    /// @param method The originating public API method, for Cordz sampling.
     void EmplaceTree(CordRep* absl_nonnull rep, const InlineData& parent,
                      MethodIdentifier method);
 
-    // Commits the change of a newly created, or updated `rep` root value into
-    // this cord. `old_rep` indicates the old (inlined or tree) value of the
-    // cord, and determines if the commit invokes SetTree() or EmplaceTree().
+    /// Commits the change of a newly created, or updated `rep` root value into
+    /// this cord.
+    ///
+    /// `old_rep` indicates the old (inlined or tree) value of the cord, and
+    /// determines if the commit invokes SetTree() or EmplaceTree().
+    ///
+    /// @param old_rep The previous root value of the cord.
+    /// @param rep The new root value to commit.
+    /// @param scope The update scope guarding any referenced CordzInfo.
+    /// @param method The originating public API method, for Cordz sampling.
     void CommitTree(const CordRep* absl_nullable old_rep,
                     CordRep* absl_nonnull rep, const CordzUpdateScope& scope,
                     MethodIdentifier method);
@@ -999,7 +1343,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
       data_.CopyInlineToString(dst);
     }
 
-    // Copies the inline contents into `dst`. Assumes the cord is not empty.
+    /// Copies the inline contents into `dst`. Assumes the cord is not empty.
+    ///
+    /// @param dst The destination array receiving the inline contents.
     void CopyToArray(char* absl_nonnull dst) const;
 
     bool is_tree() const { return data_.is_tree(); }
@@ -1071,6 +1417,14 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
   bool EqualsImpl(const Cord& rhs, size_t size_to_compare) const;
   int CompareImpl(const Cord& rhs) const;
 
+  /// Compares `lhs` and `rhs` over the first `size_to_compare` bytes.
+  ///
+  /// @tparam ResultType The result type of the comparison.
+  /// @tparam RHS The right-hand operand type.
+  /// @param lhs The left-hand Cord.
+  /// @param rhs The right-hand operand.
+  /// @param size_to_compare The number of bytes to compare.
+  /// @return The comparison result as `ResultType`.
   template <typename ResultType, typename RHS>
   friend ResultType GenericCompare(const Cord& lhs, const RHS& rhs,
                                    size_t size_to_compare);
@@ -1124,7 +1478,11 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Cord {
   void CopyToArrayImpl(char* absl_nonnull dst) const;
 };
 
-// allow a Cord to be logged
+/// Writes a Cord to an output stream, allowing a Cord to be logged.
+///
+/// @param out The output stream to write to.
+/// @param cord The Cord to write.
+/// @return A reference to `out`.
 extern std::ostream& operator<<(std::ostream& out, const Cord& cord);
 
 // ------------------------------------------------------------------
@@ -1177,10 +1535,17 @@ Cord MakeCordFromExternal(absl::string_view data, Releaser&& releaser) {
   return cord;
 }
 
+/// Constructs an inline representation from a view and an optional tree.
+///
+/// @param sv The inline character data.
+/// @param rep The tree representation, or `nullptr` for inline data.
 constexpr Cord::InlineRep::InlineRep(absl::string_view sv,
                                      CordRep* absl_nullable rep)
     : data_(sv, rep) {}
 
+/// Copy-constructs an inline representation.
+///
+/// @param src The representation to copy from.
 inline Cord::InlineRep::InlineRep(const Cord::InlineRep& src)
     : data_(InlineData::kDefaultInit) {
   if (CordRep* tree = src.tree()) {
@@ -1191,10 +1556,17 @@ inline Cord::InlineRep::InlineRep(const Cord::InlineRep& src)
   }
 }
 
+/// Move-constructs an inline representation.
+///
+/// @param src The representation to move from.
 inline Cord::InlineRep::InlineRep(Cord::InlineRep&& src) : data_(src.data_) {
   src.ResetToEmpty();
 }
 
+/// Copy-assigns an inline representation.
+///
+/// @param src The representation to copy from.
+/// @return A reference to this representation.
 inline Cord::InlineRep& Cord::InlineRep::operator=(const Cord::InlineRep& src) {
   if (this == &src) {
     return *this;
@@ -1207,6 +1579,10 @@ inline Cord::InlineRep& Cord::InlineRep::operator=(const Cord::InlineRep& src) {
   return *this;
 }
 
+/// Move-assigns an inline representation.
+///
+/// @param src The representation to move from.
+/// @return A reference to this representation.
 inline Cord::InlineRep& Cord::InlineRep::operator=(
     Cord::InlineRep&& src) noexcept {
   if (is_tree()) {
@@ -1217,6 +1593,9 @@ inline Cord::InlineRep& Cord::InlineRep::operator=(
   return *this;
 }
 
+/// Swaps the contents of this representation with `rhs`.
+///
+/// @param rhs The representation to swap with.
 inline void Cord::InlineRep::Swap(Cord::InlineRep* absl_nonnull rhs) {
   if (rhs == this) {
     return;
@@ -1225,10 +1604,17 @@ inline void Cord::InlineRep::Swap(Cord::InlineRep* absl_nonnull rhs) {
   swap(data_, rhs->data_);
 }
 
+/// Returns a pointer to the inline character data.
+///
+/// @return A pointer to the inline data, or `nullptr` if holding a pointer.
 inline const char* absl_nullable Cord::InlineRep::data() const {
   return is_tree() ? nullptr : data_.as_chars();
 }
 
+/// Reserves inline storage for `n` bytes and returns a writable pointer.
+///
+/// @param n The number of bytes to reserve.
+/// @return A pointer to the writable inline storage.
 inline char* absl_nonnull Cord::InlineRep::set_data(size_t n) {
   assert(n <= kMaxInline);
   ResetToEmpty();
@@ -1236,6 +1622,10 @@ inline char* absl_nonnull Cord::InlineRep::set_data(size_t n) {
   return data_.as_chars();
 }
 
+/// Sets the inline data, discarding any existing pointer.
+///
+/// @param data The character data to store inline.
+/// @param n The number of bytes to store.
 inline void Cord::InlineRep::set_data(const char* absl_nullable data,
                                       size_t n) {
   static_assert(kMaxInline == 15, "set_data is hard-coded for a length of 15");
@@ -1243,6 +1633,9 @@ inline void Cord::InlineRep::set_data(const char* absl_nullable data,
   data_.set_inline_data(data, n);
 }
 
+/// Reduces the inline size by `n` bytes.
+///
+/// @param n The number of bytes to remove. REQUIRES: holding data.
 inline void Cord::InlineRep::reduce_size(size_t n) {
   size_t tag = inline_size();
   assert(tag <= kMaxInline);
@@ -1252,23 +1645,35 @@ inline void Cord::InlineRep::reduce_size(size_t n) {
   set_inline_size(tag);
 }
 
+/// Removes the first `n` bytes of inline data.
+///
+/// @param n The number of bytes to remove. REQUIRES: holding data.
 inline void Cord::InlineRep::remove_prefix(size_t n) {
   cord_internal::SmallMemmove(data_.as_chars(), data_.as_chars() + n,
                               inline_size() - n);
   reduce_size(n);
 }
 
+/// Returns a pointer to the inline character data.
+///
+/// @return A pointer to the inline data.
 inline const char* absl_nonnull Cord::InlineRep::as_chars() const {
   assert(!data_.is_tree());
   return data_.as_chars();
 }
 
+/// Returns the tree representation, which must exist.
+///
+/// @return The tree pointer.
 inline absl::cord_internal::CordRep* absl_nonnull Cord::InlineRep::as_tree()
     const {
   assert(data_.is_tree());
   return data_.as_tree();
 }
 
+/// Returns the tree representation, if any.
+///
+/// @return The tree pointer, or `nullptr` if holding inline bytes.
 inline absl::cord_internal::CordRep* absl_nullable Cord::InlineRep::tree()
     const {
   if (is_tree()) {
@@ -1278,10 +1683,18 @@ inline absl::cord_internal::CordRep* absl_nullable Cord::InlineRep::tree()
   }
 }
 
+/// Returns the number of bytes held by this representation.
+///
+/// @return The size in bytes.
 inline size_t Cord::InlineRep::size() const {
   return is_tree() ? as_tree()->length : inline_size();
 }
 
+/// Creates a CordRepFlat instance from the current inlined data with `extra`
+/// bytes of desired additional capacity.
+///
+/// @param extra The additional capacity to reserve.
+/// @return A newly allocated flat node holding the inline data.
 inline cord_internal::CordRepFlat* absl_nonnull
 Cord::InlineRep::MakeFlatWithExtraCapacity(size_t extra) {
   static_assert(cord_internal::kMinFlatLength >= sizeof(data_));
@@ -1292,6 +1705,10 @@ Cord::InlineRep::MakeFlatWithExtraCapacity(size_t extra) {
   return result;
 }
 
+/// Sets the tree value for this instance, and randomly samples this cord.
+///
+/// @param rep The tree value to set.
+/// @param method The originating public API method, for Cordz sampling.
 inline void Cord::InlineRep::EmplaceTree(CordRep* absl_nonnull rep,
                                          MethodIdentifier method) {
   assert(rep);
@@ -1299,6 +1716,11 @@ inline void Cord::InlineRep::EmplaceTree(CordRep* absl_nonnull rep,
   CordzInfo::MaybeTrackCord(data_, method);
 }
 
+/// Sets the tree value for this instance, copying the parent sampling stack.
+///
+/// @param rep The tree value to set.
+/// @param parent The parent data whose sampling stack may be copied.
+/// @param method The originating public API method, for Cordz sampling.
 inline void Cord::InlineRep::EmplaceTree(CordRep* absl_nonnull rep,
                                          const InlineData& parent,
                                          MethodIdentifier method) {
@@ -1306,6 +1728,10 @@ inline void Cord::InlineRep::EmplaceTree(CordRep* absl_nonnull rep,
   CordzInfo::MaybeTrackCord(data_, parent, method);
 }
 
+/// Sets the tree value for this instance. `rep` must not be null.
+///
+/// @param rep The tree value to set.
+/// @param scope The update scope guarding any referenced CordzInfo.
 inline void Cord::InlineRep::SetTree(CordRep* absl_nonnull rep,
                                      const CordzUpdateScope& scope) {
   assert(rep);
@@ -1314,6 +1740,10 @@ inline void Cord::InlineRep::SetTree(CordRep* absl_nonnull rep,
   scope.SetCordRep(rep);
 }
 
+/// Sets the tree value for this instance, resetting to empty if `rep` is null.
+///
+/// @param rep The tree value to set, or `nullptr` to reset to empty.
+/// @param scope The update scope guarding any referenced CordzInfo.
 inline void Cord::InlineRep::SetTreeOrEmpty(CordRep* absl_nullable rep,
                                             const CordzUpdateScope& scope) {
   assert(data_.is_tree());
@@ -1325,6 +1755,12 @@ inline void Cord::InlineRep::SetTreeOrEmpty(CordRep* absl_nullable rep,
   scope.SetCordRep(rep);
 }
 
+/// Commits a newly created or updated `rep` root value into this cord.
+///
+/// @param old_rep The previous root value of the cord.
+/// @param rep The new root value to commit.
+/// @param scope The update scope guarding any referenced CordzInfo.
+/// @param method The originating public API method, for Cordz sampling.
 inline void Cord::InlineRep::CommitTree(const CordRep* absl_nullable old_rep,
                                         CordRep* absl_nonnull rep,
                                         const CordzUpdateScope& scope,
@@ -1336,6 +1772,9 @@ inline void Cord::InlineRep::CommitTree(const CordRep* absl_nullable old_rep,
   }
 }
 
+/// Resets this representation to empty, releasing any tree.
+///
+/// @return The former tree pointer, or `nullptr` if it held inline bytes.
 inline absl::cord_internal::CordRep* absl_nullable Cord::InlineRep::clear() {
   if (is_tree()) {
     CordzInfo::MaybeUntrackCord(cordz_info());
@@ -1345,6 +1784,9 @@ inline absl::cord_internal::CordRep* absl_nullable Cord::InlineRep::clear() {
   return result;
 }
 
+/// Copies the inline contents into `dst`. Assumes the cord is not empty.
+///
+/// @param dst The destination array receiving the inline contents.
 inline void Cord::InlineRep::CopyToArray(char* absl_nonnull dst) const {
   assert(!is_tree());
   size_t n = inline_size();
@@ -1740,6 +2182,11 @@ inline void Cord::ForEachChunk(
 }
 
 // Nonmember Cord-to-Cord relational operators.
+
+/// Compares two Cords for equality.
+/// @param lhs The left-hand Cord.
+/// @param rhs The right-hand Cord.
+/// @return `true` if the Cords hold equal contents.
 inline bool operator==(const Cord& lhs, const Cord& rhs) {
   if (lhs.contents_.IsSame(rhs.contents_)) return true;
   size_t rhs_size = rhs.size();
@@ -1747,12 +2194,32 @@ inline bool operator==(const Cord& lhs, const Cord& rhs) {
   return lhs.EqualsImpl(rhs, rhs_size);
 }
 
+/// Compares two Cords for inequality.
+/// @param x The left-hand Cord.
+/// @param y The right-hand Cord.
+/// @return `true` if the Cords differ.
 inline bool operator!=(const Cord& x, const Cord& y) { return !(x == y); }
+/// Orders one Cord before another.
+/// @param x The left-hand Cord.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is lexicographically less than `y`.
 inline bool operator<(const Cord& x, const Cord& y) { return x.Compare(y) < 0; }
+/// Orders one Cord after another.
+/// @param x The left-hand Cord.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is lexicographically greater than `y`.
 inline bool operator>(const Cord& x, const Cord& y) { return x.Compare(y) > 0; }
+/// Tests whether one Cord is ordered at or before another.
+/// @param x The left-hand Cord.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is not greater than `y`.
 inline bool operator<=(const Cord& x, const Cord& y) {
   return x.Compare(y) <= 0;
 }
+/// Tests whether one Cord is ordered at or after another.
+/// @param x The left-hand Cord.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is not less than `y`.
 inline bool operator>=(const Cord& x, const Cord& y) {
   return x.Compare(y) >= 0;
 }
@@ -1761,6 +2228,11 @@ inline bool operator>=(const Cord& x, const Cord& y) {
 //
 // Due to implicit conversions, these also enable comparisons of Cord with
 // std::string and const char*.
+
+/// Compares a Cord with string data for equality.
+/// @param lhs The left-hand Cord.
+/// @param rhs The right-hand string data.
+/// @return `true` if the contents are equal.
 inline bool operator==(const Cord& lhs, absl::string_view rhs) {
   size_t lhs_size = lhs.size();
   size_t rhs_size = rhs.size();
@@ -1768,20 +2240,64 @@ inline bool operator==(const Cord& lhs, absl::string_view rhs) {
   return lhs.EqualsImpl(rhs, rhs_size);
 }
 
+/// Compares string data with a Cord for equality.
+/// @param x The left-hand string data.
+/// @param y The right-hand Cord.
+/// @return `true` if the contents are equal.
 inline bool operator==(absl::string_view x, const Cord& y) { return y == x; }
+/// Compares a Cord with string data for inequality.
+/// @param x The left-hand Cord.
+/// @param y The right-hand string data.
+/// @return `true` if the contents differ.
 inline bool operator!=(const Cord& x, absl::string_view y) { return !(x == y); }
+/// Compares string data with a Cord for inequality.
+/// @param x The left-hand string data.
+/// @param y The right-hand Cord.
+/// @return `true` if the contents differ.
 inline bool operator!=(absl::string_view x, const Cord& y) { return !(x == y); }
+/// Orders a Cord before string data.
+/// @param x The left-hand Cord.
+/// @param y The right-hand string data.
+/// @return `true` if `x` is lexicographically less than `y`.
 inline bool operator<(const Cord& x, absl::string_view y) {
   return x.Compare(y) < 0;
 }
+/// Orders string data before a Cord.
+/// @param x The left-hand string data.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is lexicographically less than `y`.
 inline bool operator<(absl::string_view x, const Cord& y) {
   return y.Compare(x) > 0;
 }
+/// Orders a Cord after string data.
+/// @param x The left-hand Cord.
+/// @param y The right-hand string data.
+/// @return `true` if `x` is lexicographically greater than `y`.
 inline bool operator>(const Cord& x, absl::string_view y) { return y < x; }
+/// Orders string data after a Cord.
+/// @param x The left-hand string data.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is lexicographically greater than `y`.
 inline bool operator>(absl::string_view x, const Cord& y) { return y < x; }
+/// Tests whether a Cord is ordered at or before string data.
+/// @param x The left-hand Cord.
+/// @param y The right-hand string data.
+/// @return `true` if `x` is not greater than `y`.
 inline bool operator<=(const Cord& x, absl::string_view y) { return !(y < x); }
+/// Tests whether string data is ordered at or before a Cord.
+/// @param x The left-hand string data.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is not greater than `y`.
 inline bool operator<=(absl::string_view x, const Cord& y) { return !(y < x); }
+/// Tests whether a Cord is ordered at or after string data.
+/// @param x The left-hand Cord.
+/// @param y The right-hand string data.
+/// @return `true` if `x` is not less than `y`.
 inline bool operator>=(const Cord& x, absl::string_view y) { return !(x < y); }
+/// Tests whether string data is ordered at or after a Cord.
+/// @param x The left-hand string data.
+/// @param y The right-hand Cord.
+/// @return `true` if `x` is not less than `y`.
 inline bool operator>=(absl::string_view x, const Cord& y) { return !(x < y); }
 
 // Some internals exposed to test code.

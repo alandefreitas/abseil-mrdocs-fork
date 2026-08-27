@@ -34,41 +34,48 @@
 #include "absl/base/macros.h"
 #include "absl/meta/type_traits.h"
 
+// Abseil's root namespace.
+//
+// Contains utilities for creating and converting smart pointers.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
 // -----------------------------------------------------------------------------
 // Function Template: WrapUnique()
 // -----------------------------------------------------------------------------
-//
-// Adopts ownership from a raw pointer and transfers it to the returned
-// `std::unique_ptr`, whose type is deduced. Because of this deduction, *do not*
-// specify the template type `T` when calling `WrapUnique`.
-//
-// Example:
-//   X* NewX(int, int);
-//   auto x = WrapUnique(NewX(1, 2));  // 'x' is std::unique_ptr<X>.
-//
-// Do not call WrapUnique with an explicit type, as in
-// `WrapUnique<X>(NewX(1, 2))`.  The purpose of WrapUnique is to automatically
-// deduce the pointer type. If you wish to make the type explicit, just use
-// `std::unique_ptr` directly.
-//
-//   auto x = std::unique_ptr<X>(NewX(1, 2));
-//                  - or -
-//   std::unique_ptr<X> x(NewX(1, 2));
-//
-// While `absl::WrapUnique` is useful for capturing the output of a raw
-// pointer factory, prefer 'std::make_unique<T>(args...)' over
-// 'absl::WrapUnique(new T(args...))'.
-//
-//   auto x = WrapUnique(new X(1, 2));  // works, but nonideal.
-//   auto x = make_unique<X>(1, 2);     // safer, standard, avoids raw 'new'.
-//
-// Note that `absl::WrapUnique(p)` is valid only if `delete p` is a valid
-// expression. In particular, `absl::WrapUnique()` cannot wrap pointers to
-// arrays, functions or void, and it must not be used to capture pointers
-// obtained from array-new expressions (even though that would compile!).
+/// Adopt ownership of a raw pointer into a `std::unique_ptr`.
+///
+/// Adopts ownership from a raw pointer and transfers it to the returned
+/// `std::unique_ptr`, whose type is deduced. Because of this deduction, *do not*
+/// specify the template type `T` when calling `WrapUnique`.
+///
+/// Example:
+///   X* NewX(int, int);
+///   auto x = WrapUnique(NewX(1, 2));  // 'x' is std::unique_ptr<X>.
+///
+/// Do not call WrapUnique with an explicit type, as in
+/// `WrapUnique<X>(NewX(1, 2))`.  The purpose of WrapUnique is to automatically
+/// deduce the pointer type. If you wish to make the type explicit, just use
+/// `std::unique_ptr` directly.
+///
+///   auto x = std::unique_ptr<X>(NewX(1, 2));
+///                  - or -
+///   std::unique_ptr<X> x(NewX(1, 2));
+///
+/// While `absl::WrapUnique` is useful for capturing the output of a raw
+/// pointer factory, prefer 'std::make_unique<T>(args...)' over
+/// 'absl::WrapUnique(new T(args...))'.
+///
+///   auto x = WrapUnique(new X(1, 2));  // works, but nonideal.
+///   auto x = make_unique<X>(1, 2);     // safer, standard, avoids raw 'new'.
+///
+/// Note that `absl::WrapUnique(p)` is valid only if `delete p` is a valid
+/// expression. In particular, `absl::WrapUnique()` cannot wrap pointers to
+/// arrays, functions or void, and it must not be used to capture pointers
+/// obtained from array-new expressions (even though that would compile!).
+///
+/// @param ptr The raw pointer to take ownership of.
+/// @return A `std::unique_ptr` owning `ptr`.
 template <typename T>
 std::unique_ptr<T> WrapUnique(T* ptr) {
   static_assert(!std::is_array_v<T>, "array types are unsupported");
@@ -91,14 +98,17 @@ std::unique_ptr<T> WrapUnique(T* ptr) {
 // (Exception-Safe Function Calls)[https://herbsutter.com/gotw/_102/].
 // (In general, reviewers should treat `new T(a,b)` with scrutiny.)
 //
-// Historical note: Abseil once provided a C++11 compatible implementation of
-// the C++14's `std::make_unique`. Now that C++11 support has been sunsetted,
-// `absl::make_unique` simply uses the STL-provided implementation. New code
-// should use `std::make_unique`.
+/// Create a `std::unique_ptr` owning a newly constructed object.
+///
+/// Historical note: Abseil once provided a C++11 compatible implementation of
+/// the C++14's `std::make_unique`. Now that C++11 support has been sunsetted,
+/// `absl::make_unique` simply uses the STL-provided implementation. New code
+/// should use `std::make_unique`.
 using std::make_unique ABSL_REFACTOR_INLINE;
 
 #if defined(__cpp_lib_smart_ptr_for_overwrite) && \
     __cpp_lib_smart_ptr_for_overwrite >= 202002L
+/// Create a `std::unique_ptr` whose object is default-initialized.
 using std::make_unique_for_overwrite;
 #else
 
@@ -155,39 +165,52 @@ make_unique_for_overwrite(Args&&... /* args */) = delete;
 // Function Template: RawPtr()
 // -----------------------------------------------------------------------------
 //
-// Extracts the raw pointer from a pointer-like value `ptr`. `absl::RawPtr` is
-// useful within templates that need to handle a complement of raw pointers,
-// `std::nullptr_t`, and smart pointers.
+/// Extract the raw pointer from a pointer-like value.
+///
+/// Extracts the raw pointer from a pointer-like value `ptr`. `absl::RawPtr` is
+/// useful within templates that need to handle a complement of raw pointers,
+/// `std::nullptr_t`, and smart pointers.
+///
+/// @param ptr The pointer-like value to extract from.
+/// @return The underlying raw pointer, or `nullptr` if `ptr` is null.
 template <typename T>
 auto RawPtr(T&& ptr) -> decltype(std::addressof(*ptr)) {
   // ptr is a forwarding reference to support Ts with non-const operators.
   return (ptr != nullptr) ? std::addressof(*ptr) : nullptr;
 }
-inline std::nullptr_t RawPtr(std::nullptr_t) { return nullptr; }
+/// Extract the raw pointer from a null pointer.
+///
+/// @param ptr The null pointer.
+/// @return `nullptr`.
+inline std::nullptr_t RawPtr(std::nullptr_t ptr) { return nullptr; }
 
 // -----------------------------------------------------------------------------
 // Function Template: ShareUniquePtr()
 // -----------------------------------------------------------------------------
-//
-// Adopts a `std::unique_ptr` rvalue and returns a `std::shared_ptr` of deduced
-// type. Ownership (if any) of the held value is transferred to the returned
-// shared pointer.
-//
-// Example:
-//
-//     auto up = std::make_unique<int>(10);
-//     auto sp = absl::ShareUniquePtr(std::move(up));  // shared_ptr<int>
-//     CHECK_EQ(*sp, 10);
-//     CHECK(up == nullptr);
-//
-// Note that this conversion is correct even when T is an array type, and more
-// generally it works for *any* deleter of the `unique_ptr` (single-object
-// deleter, array deleter, or any custom deleter), since the deleter is adopted
-// by the shared pointer as well. The deleter is copied (unless it is a
-// reference).
-//
-// Implements the resolution of [LWG 2415](http://wg21.link/lwg2415), by which a
-// null shared pointer does not attempt to call the deleter.
+/// Convert a `std::unique_ptr` into a `std::shared_ptr`.
+///
+/// Adopts a `std::unique_ptr` rvalue and returns a `std::shared_ptr` of deduced
+/// type. Ownership (if any) of the held value is transferred to the returned
+/// shared pointer.
+///
+/// Example:
+///
+///     auto up = std::make_unique<int>(10);
+///     auto sp = absl::ShareUniquePtr(std::move(up));  // shared_ptr<int>
+///     CHECK_EQ(*sp, 10);
+///     CHECK(up == nullptr);
+///
+/// Note that this conversion is correct even when T is an array type, and more
+/// generally it works for *any* deleter of the `unique_ptr` (single-object
+/// deleter, array deleter, or any custom deleter), since the deleter is adopted
+/// by the shared pointer as well. The deleter is copied (unless it is a
+/// reference).
+///
+/// Implements the resolution of [LWG 2415](http://wg21.link/lwg2415), by which a
+/// null shared pointer does not attempt to call the deleter.
+///
+/// @param ptr The unique pointer to convert; its ownership is transferred.
+/// @return A `std::shared_ptr` adopting the value held by `ptr`.
 template <typename T, typename D>
 std::shared_ptr<T> ShareUniquePtr(std::unique_ptr<T, D>&& ptr) {
   return ptr ? std::shared_ptr<T>(std::move(ptr)) : std::shared_ptr<T>();
@@ -196,18 +219,21 @@ std::shared_ptr<T> ShareUniquePtr(std::unique_ptr<T, D>&& ptr) {
 // -----------------------------------------------------------------------------
 // Function Template: WeakenPtr()
 // -----------------------------------------------------------------------------
-//
-// Creates a weak pointer associated with a given shared pointer. The returned
-// value is a `std::weak_ptr` of deduced type.
-//
-// Example:
-//
-//    auto sp = std::make_shared<int>(10);
-//    auto wp = absl::WeakenPtr(sp);
-//    CHECK_EQ(sp.get(), wp.lock().get());
-//    sp.reset();
-//    CHECK(wp.lock() == nullptr);
-//
+/// Create a weak pointer from a shared pointer.
+///
+/// Creates a weak pointer associated with a given shared pointer. The returned
+/// value is a `std::weak_ptr` of deduced type.
+///
+/// Example:
+///
+///    auto sp = std::make_shared<int>(10);
+///    auto wp = absl::WeakenPtr(sp);
+///    CHECK_EQ(sp.get(), wp.lock().get());
+///    sp.reset();
+///    CHECK(wp.lock() == nullptr);
+///
+/// @param ptr The shared pointer to observe.
+/// @return A `std::weak_ptr` referring to the value owned by `ptr`.
 template <typename T>
 std::weak_ptr<T> WeakenPtr(const std::shared_ptr<T>& ptr) {
   return std::weak_ptr<T>(ptr);
@@ -216,22 +242,24 @@ std::weak_ptr<T> WeakenPtr(const std::shared_ptr<T>& ptr) {
 // -----------------------------------------------------------------------------
 // Class Template: pointer_traits
 // -----------------------------------------------------------------------------
-//
-// Historical note: Abseil once provided an implementation of
-// `std::pointer_traits` for platforms that had not yet provided it. Those
-// platforms are no longer supported. New code should simply use
-// `std::pointer_traits`.
+/// Uniform interface to the properties of a pointer-like type.
+///
+/// Historical note: Abseil once provided an implementation of
+/// `std::pointer_traits` for platforms that had not yet provided it. Those
+/// platforms are no longer supported. New code should simply use
+/// `std::pointer_traits`.
 template <typename Ptr>
 using pointer_traits ABSL_DEPRECATE_AND_INLINE() = std::pointer_traits<Ptr>;
 
 // -----------------------------------------------------------------------------
 // Class Template: allocator_traits
 // -----------------------------------------------------------------------------
-//
-// Historical note: Abseil once provided an implementation of
-// `std::allocator_traits` for platforms that had not yet provided it. Those
-// platforms are no longer supported. New code should simply use
-// `std::allocator_traits`.
+/// Uniform interface to the properties of an allocator type.
+///
+/// Historical note: Abseil once provided an implementation of
+/// `std::allocator_traits` for platforms that had not yet provided it. Those
+/// platforms are no longer supported. New code should simply use
+/// `std::allocator_traits`.
 template <typename Alloc>
 using allocator_traits ABSL_DEPRECATE_AND_INLINE() =
     std::allocator_traits<Alloc>;
@@ -279,6 +307,9 @@ using GetIsNothrow = typename Alloc::is_nothrow;
 // NOTE: allocator_is_nothrow<std::allocator<T>> is guaranteed to derive from
 // the same type for all T, because users should specialize neither
 // allocator_is_nothrow nor std::allocator.
+/// Trait class reporting whether an allocator's allocation never throws.
+///
+/// Derives from `Alloc::is_nothrow` if present, otherwise `std::false_type`.
 template <typename Alloc>
 struct allocator_is_nothrow
     : memory_internal::ExtractOrT<memory_internal::GetIsNothrow, Alloc,
@@ -287,8 +318,10 @@ struct allocator_is_nothrow
 #if defined(ABSL_ALLOCATOR_NOTHROW) && ABSL_ALLOCATOR_NOTHROW
 template <typename T>
 struct allocator_is_nothrow<std::allocator<T>> : std::true_type {};
+/// Trait reporting whether the default allocator's allocation never throws.
 struct default_allocator_is_nothrow : std::true_type {};
 #else
+/// Trait reporting whether the default allocator's allocation never throws.
 struct default_allocator_is_nothrow : std::false_type {};
 #endif
 

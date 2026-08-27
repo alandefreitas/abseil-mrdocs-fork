@@ -53,44 +53,47 @@ std::atomic<uint32_t>* absl_nonnull ControlWord(
     absl::once_flag* absl_nonnull flag);
 }  // namespace base_internal
 
-// call_once()
-//
-// For all invocations using a given `once_flag`, invokes a given `fn` exactly
-// once across all threads. The first call to `call_once()` with a particular
-// `once_flag` argument (that does not throw an exception) will run the
-// specified function with the provided `args`; other calls with the same
-// `once_flag` argument will not run the function, but will wait
-// for the provided function to finish running (if it is still running).
-//
-// This mechanism provides a safe, simple, and fast mechanism for one-time
-// initialization in a multi-threaded process.
-//
-// Example:
-//
-// class MyInitClass {
-//  public:
-//  ...
-//  mutable absl::once_flag once_;
-//
-//  MyInitClass* init() const {
-//    absl::call_once(once_, &MyInitClass::Init, this);
-//    return ptr_;
-//  }
-//
+/// For all invocations using a given `once_flag`, invokes a given `fn` exactly
+/// once across all threads. The first call to `call_once()` with a particular
+/// `once_flag` argument (that does not throw an exception) will run the
+/// specified function with the provided `args`; other calls with the same
+/// `once_flag` argument will not run the function, but will wait
+/// for the provided function to finish running (if it is still running).
+///
+/// This mechanism provides a safe, simple, and fast mechanism for one-time
+/// initialization in a multi-threaded process.
+///
+/// Example:
+///
+/// class MyInitClass {
+///  public:
+///  ...
+///  mutable absl::once_flag once_;
+///
+///  MyInitClass* init() const {
+///    absl::call_once(once_, &MyInitClass::Init, this);
+///    return ptr_;
+///  }
+///
+/// @param flag The `once_flag` used to distinguish this call from others.
+/// @param fn The callable to invoke at most once.
+/// @param args The arguments to pass to `fn`.
 template <typename Callable, typename... Args>
 void call_once(absl::once_flag& flag, Callable&& fn, Args&&... args);
 
-// once_flag
-//
-// Objects of this type are used to distinguish calls to `call_once()` and
-// ensure the provided function is only invoked once across all threads. This
-// type is not copyable or movable. However, it has a `constexpr`
-// constructor, and is safe to use as a namespace-scoped global variable.
+/// Objects of this type are used to distinguish calls to `call_once()` and
+/// ensure the provided function is only invoked once across all threads. This
+/// type is not copyable or movable. However, it has a `constexpr`
+/// constructor, and is safe to use as a namespace-scoped global variable.
 class once_flag {
  public:
+  /// Constructs a `once_flag` whose associated function has not yet run.
   constexpr once_flag() : control_(0) {}
-  once_flag(const once_flag&) = delete;
-  once_flag& operator=(const once_flag&) = delete;
+  /// Deleted: `once_flag` is not copyable.
+  once_flag(const once_flag& other) = delete;
+  /// Deleted: `once_flag` is not copy-assignable.
+  /// @return Not applicable; this overload is deleted.
+  once_flag& operator=(const once_flag& other) = delete;
 
  private:
   friend std::atomic<uint32_t>* absl_nonnull base_internal::ControlWord(

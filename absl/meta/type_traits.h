@@ -63,6 +63,7 @@
 #define ABSL_INTERNAL_DEFAULT_NEW_ALIGNMENT alignof(std::max_align_t)
 #endif  // defined(__STDCPP_DEFAULT_NEW_ALIGNMENT__)
 
+// Abseil's top-level namespace, containing the library's public API.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
@@ -102,16 +103,14 @@ struct is_detected : is_detected_impl<void, Op, Args...>::type {};
 
 }  // namespace type_traits_internal
 
-// void_t()
-//
-// Ignores the type of any its arguments and returns `void`. In general, this
-// metafunction allows you to create a general case that maps to `void` while
-// allowing specializations that map to specific types.
-//
-// This metafunction is a workaround for some implementations of `std::void_t`
-// that evaluate to `void` prematurely, causing partial specializations to
-// appear duplicated (and thus invalid) to the compiler prior to substitution
-// taking place. Whenever possible, use `std::void_t` instead.
+/// Ignores the type of any its arguments and returns `void`. In general, this
+/// metafunction allows you to create a general case that maps to `void` while
+/// allowing specializations that map to specific types.
+///
+/// This metafunction is a workaround for some implementations of `std::void_t`
+/// that evaluate to `void` prematurely, causing partial specializations to
+/// appear duplicated (and thus invalid) to the compiler prior to substitution
+/// taking place. Whenever possible, use `std::void_t` instead.
 template <typename... Ts>
 using void_t [[deprecated("Use std::void_t instead.")]] =
     typename type_traits_internal::VoidTImpl<Ts...>::type;
@@ -123,154 +122,205 @@ using void_t [[deprecated("Use std::void_t instead.")]] =
 // See the documentation for the STL <type_traits> header for more information:
 // https://en.cppreference.com/w/cpp/header/type_traits
 
+/// Deprecated alias for `std::add_const_t`. Prefer the std version directly.
 template <class T>
 using add_const_t ABSL_DEPRECATE_AND_INLINE() = std::add_const_t<T>;
 
+/// Deprecated alias for `std::add_cv_t`. Prefer the std version directly.
 template <class T>
 using add_cv_t ABSL_DEPRECATE_AND_INLINE() = std::add_cv_t<T>;
 
+/// Deprecated alias for `std::add_lvalue_reference_t`. Prefer the std version
+/// directly.
 template <class T>
 using add_lvalue_reference_t ABSL_DEPRECATE_AND_INLINE() =
     std::add_lvalue_reference_t<T>;
 
+/// Deprecated alias for `std::add_pointer_t`. Prefer the std version directly.
 template <class T>
 using add_pointer_t ABSL_DEPRECATE_AND_INLINE() = std::add_pointer_t<T>;
 
+/// Deprecated alias for `std::add_rvalue_reference_t`. Prefer the std version
+/// directly.
 template <class T>
 using add_rvalue_reference_t ABSL_DEPRECATE_AND_INLINE() =
     std::add_rvalue_reference_t<T>;
 
+/// Deprecated alias for `std::add_volatile_t`. Prefer the std version directly.
 template <class T>
 using add_volatile_t ABSL_DEPRECATE_AND_INLINE() = std::add_volatile_t<T>;
 
+/// Deprecated alias for `std::common_type_t`. Prefer the std version directly.
 template <class... T>
 using common_type_t ABSL_DEPRECATE_AND_INLINE() = std::common_type_t<T...>;
 
+/// Deprecated alias for `std::conditional_t`. Prefer the std version directly.
 template <bool C, class T, class F>
 using conditional_t ABSL_DEPRECATE_AND_INLINE() = std::conditional_t<C, T, F>;
 
+/// Deprecated alias for `std::conjunction`. Prefer the std version directly.
 template <class... T>
 using conjunction ABSL_DEPRECATE_AND_INLINE() = std::conjunction<T...>;
 
+/// Deprecated alias for `std::decay_t`. Prefer the std version directly.
 template <class T>
 using decay_t ABSL_DEPRECATE_AND_INLINE() = std::decay_t<T>;
 
-// Avoid inlining since the inliner cannot handle default arguments well.
+/// Deprecated alias for `std::enable_if_t`. Prefer the std version directly.
+/// Avoid inlining since the inliner cannot handle default arguments well.
 template <bool C, class T = void>
 using enable_if_t [[deprecated("Use std::enable_if_t instead.")]] =
     std::enable_if_t<C, T>;
 
+/// Deprecated alias for `std::disjunction`. Prefer the std version directly.
 template <class... T>
 using disjunction ABSL_DEPRECATE_AND_INLINE() = std::disjunction<T...>;
 
+/// Deprecated alias for `std::is_copy_assignable`. Prefer the std version
+/// directly.
 template <class T>
 using is_copy_assignable ABSL_DEPRECATE_AND_INLINE() =
     std::is_copy_assignable<T>;
 
+/// Deprecated alias for `std::is_function`. Prefer the std version directly.
 template <class T>
 using is_function ABSL_DEPRECATE_AND_INLINE() = std::is_function<T>;
 
+/// Deprecated alias for `std::is_move_assignable`. Prefer the std version
+/// directly.
 template <class T>
 using is_move_assignable ABSL_DEPRECATE_AND_INLINE() =
     std::is_move_assignable<T>;
 
+/// Deprecated alias for `std::is_trivially_copy_assignable`. Prefer the std
+/// version directly.
 template <class T>
 using is_trivially_copy_assignable ABSL_DEPRECATE_AND_INLINE() =
     std::is_trivially_copy_assignable<T>;
 
+/// Deprecated alias for `std::is_trivially_copy_constructible`. Prefer the std
+/// version directly.
 template <class T>
 using is_trivially_copy_constructible ABSL_DEPRECATE_AND_INLINE() =
     std::is_trivially_copy_constructible<T>;
 
+/// Deprecated alias for `std::is_trivially_default_constructible`. Prefer the
+/// std version directly.
 template <class T>
 using is_trivially_default_constructible ABSL_DEPRECATE_AND_INLINE() =
     std::is_trivially_default_constructible<T>;
 
+/// Deprecated alias for `std::is_trivially_destructible`. Prefer the std
+/// version directly.
 template <class T>
 using is_trivially_destructible ABSL_DEPRECATE_AND_INLINE() =
     std::is_trivially_destructible<T>;
 
+/// Deprecated alias for `std::is_trivially_move_assignable`. Prefer the std
+/// version directly.
 template <class T>
 using is_trivially_move_assignable ABSL_DEPRECATE_AND_INLINE() =
     std::is_trivially_move_assignable<T>;
 
+/// Deprecated alias for `std::is_trivially_move_constructible`. Prefer the std
+/// version directly.
 template <class T>
 using is_trivially_move_constructible ABSL_DEPRECATE_AND_INLINE() =
     std::is_trivially_move_constructible<T>;
 
+/// Deprecated alias for `std::make_signed_t`. Prefer the std version directly.
 template <class T>
 using make_signed_t ABSL_DEPRECATE_AND_INLINE() = std::make_signed_t<T>;
 
+/// Deprecated alias for `std::make_unsigned_t`. Prefer the std version
+/// directly.
 template <class T>
 using make_unsigned_t ABSL_DEPRECATE_AND_INLINE() = std::make_unsigned_t<T>;
 
+/// Deprecated alias for `std::negation`. Prefer the std version directly.
 template <class T>
 using negation ABSL_DEPRECATE_AND_INLINE() = std::negation<T>;
 
+/// Deprecated alias for `std::remove_all_extents_t`. Prefer the std version
+/// directly.
 template <class T>
 using remove_all_extents_t ABSL_DEPRECATE_AND_INLINE() =
     std::remove_all_extents_t<T>;
 
+/// Deprecated alias for `std::remove_const_t`. Prefer the std version
+/// directly.
 template <class T>
 using remove_const_t ABSL_DEPRECATE_AND_INLINE() = std::remove_const_t<T>;
 
+/// Deprecated alias for `std::remove_cv_t`. Prefer the std version directly.
 template <class T>
 using remove_cv_t ABSL_DEPRECATE_AND_INLINE() = std::remove_cv_t<T>;
 
+/// Deprecated alias for `std::remove_extent_t`. Prefer the std version
+/// directly.
 template <class T>
 using remove_extent_t ABSL_DEPRECATE_AND_INLINE() = std::remove_extent_t<T>;
 
+/// Deprecated alias for `std::remove_pointer_t`. Prefer the std version
+/// directly.
 template <class T>
 using remove_pointer_t ABSL_DEPRECATE_AND_INLINE() = std::remove_pointer_t<T>;
 
+/// Deprecated alias for `std::remove_reference_t`. Prefer the std version
+/// directly.
 template <class T>
 using remove_reference_t ABSL_DEPRECATE_AND_INLINE() =
     std::remove_reference_t<T>;
 
+/// Deprecated alias for `std::remove_volatile_t`. Prefer the std version
+/// directly.
 template <class T>
 using remove_volatile_t ABSL_DEPRECATE_AND_INLINE() = std::remove_volatile_t<T>;
 
+/// Deprecated alias for `std::underlying_type_t`. Prefer the std version
+/// directly.
 template <class T>
 using underlying_type_t ABSL_DEPRECATE_AND_INLINE() = std::underlying_type_t<T>;
 
 #if defined(__cpp_lib_remove_cvref) && __cpp_lib_remove_cvref >= 201711L
+/// C++17 compatible implementation of `std::remove_cvref`, which was added in
+/// C++20. Aliases `std::remove_cvref` when it is available.
 template <typename T>
 using remove_cvref = std::remove_cvref<T>;
 
+/// Convenience alias for `remove_cvref<T>::type`.
 template <typename T>
 using remove_cvref_t = std::remove_cvref_t<T>;
 #else
-// remove_cvref()
-//
-// C++17 compatible implementation of std::remove_cvref which was added in
-// C++20.
+/// C++17 compatible implementation of `std::remove_cvref`, which was added in
+/// C++20.
 template <typename T>
 struct remove_cvref {
   using type = std::remove_cv_t<std::remove_reference_t<T>>;
 };
 
+/// Convenience alias for `remove_cvref<T>::type`.
 template <typename T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 #endif
 
 #if defined(__cpp_lib_type_identity) && __cpp_lib_type_identity >= 201806L
+/// Back-fill of C++20's `std::type_identity`. Aliases `std::type_identity`
+/// when it is available.
 template <typename T>
 using type_identity = std::type_identity<T>;
 
+/// Convenience alias for `type_identity<T>::type`.
 template <typename T>
 using type_identity_t = std::type_identity_t<T>;
 #else
-// type_identity
-//
-// Back-fill of C++20's `std::type_identity`.
+/// Back-fill of C++20's `std::type_identity`.
 template <typename T>
 struct type_identity {
   typedef T type;
 };
 
-// type_identity_t
-//
-// Back-fill of C++20's `std::type_identity_t`.
+/// Back-fill of C++20's `std::type_identity_t`.
 template <typename T>
 using type_identity_t = typename type_identity<T>::type;
 #endif
@@ -284,6 +334,8 @@ struct result_of<F(Args...)> : std::invoke_result<F, Args...> {};
 
 }  // namespace type_traits_internal
 
+/// Deprecated alias for `std::invoke_result_t`. Prefer the std version
+/// directly.
 template <typename F>
 using result_of_t [[deprecated("Use std::invoke_result_t instead.")]] =
     typename type_traits_internal::result_of<F>::type;
@@ -351,120 +403,117 @@ using IsNothrowSwappable ABSL_DEPRECATE_AND_INLINE() =
 
 }  // namespace type_traits_internal
 
-// absl::is_trivially_relocatable<T>
-//
-// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2786r11.html
-//
-// Detects whether a type is known to be "trivially relocatable" -- meaning it
-// can be relocated from one place to another as if by memcpy/memmove.
-// This implies that its object representation doesn't depend on its address,
-// and also none of its special member functions do anything strange.
-//
-// Note that when relocating the caller code should ensure that if the object is
-// polymorphic, the dynamic type is of the most derived type. Padding bytes
-// should not be copied.
-//
-// This trait is conservative. If it's true then the type is definitely
-// trivially relocatable, but if it's false then the type may or may not be. For
-// example, std::vector<int> is trivially relocatable on every known STL
-// implementation, but absl::is_trivially_relocatable<std::vector<int>> remains
-// false.
-//
-// Example:
-//
-// if constexpr (absl::is_trivially_relocatable<T>::value) {
-//   memcpy(new_location, old_location, sizeof(T));
-// } else {
-//   new(new_location) T(std::move(*old_location));
-//   old_location->~T();
-// }
-//
-// Upstream documentation:
-//
-// https://clang.llvm.org/docs/LanguageExtensions.html#:~:text=__builtin_is_cpp_trivially_relocatable
-//
-// Clang on Windows has the builtin, but it falsely claims types with a
-// user-provided destructor are trivial (http://b/275003464). So we opt out
-// there.
-//
-// TODO(b/275003464): remove the opt-out once the bug is fixed.
-//
-// Starting with Xcode 15, the Apple compiler will falsely say a type
-// with a user-provided move constructor is trivially relocatable
-// (b/324278148). We will opt out without a version check, due to
-// the fluidity of Apple versions.
-//
-// TODO(b/324278148): If all versions we use have the bug fixed, then
-// remove the condition.
-//
-// Clang on all platforms fails to detect that a type with a user-provided
-// move-assignment operator is not trivially relocatable so we also check for
-// is_trivially_move_assignable for Clang.
-//
-// TODO(b/325479096): Remove the Clang is_trivially_move_assignable version once
-// Clang's behavior is fixed.
-//
-// According to https://github.com/abseil/abseil-cpp/issues/1479, this does not
-// work with NVCC either.
+/// Detects whether a type is known to be "trivially relocatable", meaning it
+/// can be relocated from one place to another as if by memcpy/memmove. See
+/// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2786r11.html
+/// This implies that its object representation doesn't depend on its address,
+/// and also none of its special member functions do anything strange.
+///
+/// Note that when relocating the caller code should ensure that if the object
+/// is polymorphic, the dynamic type is of the most derived type. Padding
+/// bytes should not be copied.
+///
+/// This trait is conservative. If it's true then the type is definitely
+/// trivially relocatable, but if it's false then the type may or may not be.
+/// For example, std::vector<int> is trivially relocatable on every known STL
+/// implementation, but absl::is_trivially_relocatable<std::vector<int>>
+/// remains false.
+///
+/// Example:
+///
+/// if constexpr (absl::is_trivially_relocatable<T>::value) {
+///   memcpy(new_location, old_location, sizeof(T));
+/// } else {
+///   new(new_location) T(std::move(*old_location));
+///   old_location->~T();
+/// }
+///
+/// Upstream documentation:
+///
+/// https://clang.llvm.org/docs/LanguageExtensions.html#:~:text=__builtin_is_cpp_trivially_relocatable
+///
+/// Clang on Windows has the builtin, but it falsely claims types with a
+/// user-provided destructor are trivial (http://b/275003464). So we opt out
+/// there.
+///
+/// TODO(b/275003464): remove the opt-out once the bug is fixed.
+///
+/// Starting with Xcode 15, the Apple compiler will falsely say a type
+/// with a user-provided move constructor is trivially relocatable
+/// (b/324278148). We will opt out without a version check, due to
+/// the fluidity of Apple versions.
+///
+/// TODO(b/324278148): If all versions we use have the bug fixed, then
+/// remove the condition.
+///
+/// Clang on all platforms fails to detect that a type with a user-provided
+/// move-assignment operator is not trivially relocatable so we also check for
+/// is_trivially_move_assignable for Clang.
+///
+/// TODO(b/325479096): Remove the Clang is_trivially_move_assignable version
+/// once Clang's behavior is fixed.
+///
+/// According to https://github.com/abseil/abseil-cpp/issues/1479, this does
+/// not work with NVCC either.
 #if ABSL_HAVE_BUILTIN(__builtin_is_cpp_trivially_relocatable)
-// https://github.com/llvm/llvm-project/pull/127636#pullrequestreview-2637005293
-// In the current implementation, __builtin_is_cpp_trivially_relocatable will
-// only return true for types that are trivially relocatable according to the
-// standard. Notably, this means that marking a type [[clang::trivial_abi]] aka
-// ABSL_HAVE_ATTRIBUTE_TRIVIAL_ABI will have no effect on this trait.
+/// https://github.com/llvm/llvm-project/pull/127636#pullrequestreview-2637005293
+/// In the current implementation, __builtin_is_cpp_trivially_relocatable will
+/// only return true for types that are trivially relocatable according to the
+/// standard. Notably, this means that marking a type [[clang::trivial_abi]]
+/// aka ABSL_HAVE_ATTRIBUTE_TRIVIAL_ABI will have no effect on this trait.
 template <class T>
 struct is_trivially_relocatable
     : std::bool_constant<__builtin_is_cpp_trivially_relocatable(T)> {};
 #elif ABSL_HAVE_BUILTIN(__is_trivially_relocatable) && defined(__clang__) && \
     !(defined(_WIN32) || defined(_WIN64)) && !defined(__APPLE__) &&          \
     !defined(__NVCC__)
-// https://github.com/llvm/llvm-project/pull/139061
-//  __is_trivially_relocatable is deprecated.
-// TODO(b/325479096): Remove this case.
+/// https://github.com/llvm/llvm-project/pull/139061
+/// __is_trivially_relocatable is deprecated.
+/// TODO(b/325479096): Remove this case.
 template <class T>
 struct is_trivially_relocatable
     : std::bool_constant<std::is_trivially_copyable_v<T> ||
                          (__is_trivially_relocatable(T) &&
                           std::is_trivially_move_assignable_v<T>)> {};
 #else
-// Otherwise we use a fallback that detects only those types we can feasibly
-// detect. Any type that is trivially copyable is by definition trivially
-// relocatable.
+/// Otherwise we use a fallback that detects only those types we can feasibly
+/// detect. Any type that is trivially copyable is by definition trivially
+/// relocatable.
 template <class T>
 struct is_trivially_relocatable : std::is_trivially_copyable<T> {};
 #endif
 
-// absl::is_constant_evaluated()
-//
-// Detects whether the function call occurs within a constant-evaluated context.
-// Returns true if the evaluation of the call occurs within the evaluation of an
-// expression or conversion that is manifestly constant-evaluated; otherwise
-// returns false.
-//
-// This function is implemented in terms of `std::is_constant_evaluated` for
-// c++20 and up. For older c++ versions, the function is implemented in terms
-// of `__builtin_is_constant_evaluated` if available, otherwise the function
-// will fail to compile.
-//
-// Applications can inspect `ABSL_HAVE_CONSTANT_EVALUATED` at compile time
-// to check if this function is supported.
-//
-// Example:
-//
-// constexpr MyClass::MyClass(int param) {
-// #ifdef ABSL_HAVE_CONSTANT_EVALUATED
-//   if (!absl::is_constant_evaluated()) {
-//     ABSL_LOG(INFO) << "MyClass(" << param << ")";
-//   }
-// #endif  // ABSL_HAVE_CONSTANT_EVALUATED
-// }
-//
-// Upstream documentation:
-//
-// http://en.cppreference.com/w/cpp/types/is_constant_evaluated
-// http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#:~:text=__builtin_is_constant_evaluated
-//
 #if defined(ABSL_HAVE_CONSTANT_EVALUATED)
+/// Detects whether the function call occurs within a constant-evaluated
+/// context. Returns true if the evaluation of the call occurs within the
+/// evaluation of an expression or conversion that is manifestly
+/// constant-evaluated; otherwise returns false.
+///
+/// This function is implemented in terms of `std::is_constant_evaluated` for
+/// c++20 and up. For older c++ versions, the function is implemented in terms
+/// of `__builtin_is_constant_evaluated` if available, otherwise the function
+/// will fail to compile.
+///
+/// Applications can inspect `ABSL_HAVE_CONSTANT_EVALUATED` at compile time
+/// to check if this function is supported.
+///
+/// Example:
+///
+/// constexpr MyClass::MyClass(int param) {
+/// #ifdef ABSL_HAVE_CONSTANT_EVALUATED
+///   if (!absl::is_constant_evaluated()) {
+///     ABSL_LOG(INFO) << "MyClass(" << param << ")";
+///   }
+/// #endif  // ABSL_HAVE_CONSTANT_EVALUATED
+/// }
+///
+/// Upstream documentation:
+///
+/// http://en.cppreference.com/w/cpp/types/is_constant_evaluated
+/// http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#:~:text=__builtin_is_constant_evaluated
+///
+/// @return `true` if called within a constant-evaluated context, `false`
+/// otherwise.
 constexpr bool is_constant_evaluated() noexcept {
 #ifdef __cpp_lib_is_constant_evaluated
   return std::is_constant_evaluated();

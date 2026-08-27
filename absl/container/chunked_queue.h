@@ -116,11 +116,18 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// A queue implemented as a linked list of fixed or variable sized blocks.
+///
+/// `absl::chunked_queue` provides the same interface as `std::deque` minus
+/// random access. It is useful when memory usage is paramount as it provides
+/// finegrained and configurable block sizing.
 template <typename T, size_t BLo = 0, size_t BHi = BLo,
           typename Allocator = std::allocator<T>>
 class chunked_queue {
  public:
+  /// The minimum block size, in elements.
   static constexpr size_t kBlockSizeMin = (BLo == 0 && BHi == 0) ? 1 : BLo;
+  /// The maximum block size, in elements.
   static constexpr size_t kBlockSizeMax = (BLo == 0 && BHi == 0) ? 128 : BHi;
 
  private:
@@ -132,19 +139,34 @@ class chunked_queue {
 
   class iterator_common {
    public:
+    /// Returns true if `a` and `b` refer to the same element.
+    ///
+    /// @param a The first iterator to compare.
+    /// @param b The second iterator to compare.
+    /// @return true if the iterators are equal.
     friend bool operator==(const iterator_common& a, const iterator_common& b) {
       return a.ptr == b.ptr;
     }
 
+    /// Returns true if `a` and `b` refer to different elements.
+    ///
+    /// @param a The first iterator to compare.
+    /// @param b The second iterator to compare.
+    /// @return true if the iterators are not equal.
     friend bool operator!=(const iterator_common& a, const iterator_common& b) {
       return !(a == b);
     }
 
    protected:
+    /// Constructs a past-the-end iterator.
     iterator_common() = default;
+    /// Constructs an iterator to the first element of block `b`.
+    ///
+    /// @param b The block to iterate over.
     explicit iterator_common(Block* b)
         : block(b), ptr(b->start()), limit(b->limit()) {}
 
+    /// Advances the iterator to the next element.
     void Incr() {
       // If we do not have a next block, make ptr point one past the end of this
       // block. If we do have a next block, make ptr point to the first element
@@ -153,6 +175,9 @@ class chunked_queue {
       if (ptr == limit && block->next()) *this = iterator_common(block->next());
     }
 
+    /// Advances the iterator by `n` elements.
+    ///
+    /// @param n The number of elements to advance by.
     void IncrBy(size_t n) {
       while (n > static_cast<size_t>(limit - ptr)) {
         n -= static_cast<size_t>(limit - ptr);
@@ -161,8 +186,11 @@ class chunked_queue {
       ptr += n;
     }
 
+    /// The block currently pointed into.
     Block* block = nullptr;
+    /// The element currently pointed at.
     T* ptr = nullptr;
+    /// One past the last element of the current block.
     T* limit = nullptr;
   };
 
@@ -206,37 +234,58 @@ class chunked_queue {
   };
 
  public:
+  /// The allocator type.
   using allocator_type = typename AllocatorTraits::allocator_type;
+  /// The type of the elements stored in the queue.
   using value_type = typename AllocatorTraits::value_type;
+  /// An unsigned integer type used for sizes.
   using size_type = typename AllocatorTraits::size_type;
+  /// A signed integer type used for iterator differences.
   using difference_type = typename AllocatorTraits::difference_type;
+  /// A reference to an element.
   using reference = value_type&;
+  /// A const reference to an element.
   using const_reference = const value_type&;
+  /// A forward iterator over the elements.
   using iterator = basic_iterator<T>;
+  /// A const forward iterator over the elements.
   using const_iterator = basic_iterator<const T>;
 
-  // Constructs an empty queue.
+  /// Constructs an empty queue.
   chunked_queue() : chunked_queue(allocator_type()) {}
 
-  // Constructs an empty queue with a custom allocator.
+  /// Constructs an empty queue with a custom allocator.
+  ///
+  /// @param alloc The allocator to use.
   explicit chunked_queue(const allocator_type& alloc)
       : alloc_and_size_(alloc) {}
 
-  // Constructs a queue with `count` default-inserted elements.
+  /// Constructs a queue with `count` default-inserted elements.
+  ///
+  /// @param count The number of elements to create.
+  /// @param alloc The allocator to use.
   explicit chunked_queue(size_type count,
                          const allocator_type& alloc = allocator_type())
       : alloc_and_size_(alloc) {
     resize(count);
   }
 
-  // Constructs a queue with `count` copies of `value`.
+  /// Constructs a queue with `count` copies of `value`.
+  ///
+  /// @param count The number of elements to create.
+  /// @param value The value to copy into each element.
+  /// @param alloc The allocator to use.
   chunked_queue(size_type count, const T& value,
                 const allocator_type& alloc = allocator_type())
       : alloc_and_size_(alloc) {
     assign(count, value);
   }
 
-  // Constructs a queue with the contents of the range [first, last).
+  /// Constructs a queue with the contents of the range [first, last).
+  ///
+  /// @param first An iterator to the beginning of the range.
+  /// @param last An iterator past the end of the range.
+  /// @param alloc The allocator to use.
   template <typename Iter,
             typename = std::enable_if_t<
                 base_internal::IsAtLeastInputIterator<Iter>::value>>
@@ -247,20 +296,29 @@ class chunked_queue {
     RangeInit(first, last, Tag());
   }
 
-  // Constructs a queue with the contents of the initializer list `list`.
+  /// Constructs a queue with the contents of the initializer list `list`.
+  ///
+  /// @param list The initializer list to copy elements from.
+  /// @param alloc The allocator to use.
   chunked_queue(std::initializer_list<T> list,
                 const allocator_type& alloc = allocator_type())
       : chunked_queue(list.begin(), list.end(), alloc) {}
 
+  /// Destroys the queue and frees all allocated storage.
   ~chunked_queue();
 
-  // Copy constructor.
+  /// Copy constructor.
+  ///
+  /// @param other The queue to copy from.
   chunked_queue(const chunked_queue& other)
       : chunked_queue(other,
                       AllocatorTraits::select_on_container_copy_construction(
                           other.alloc_and_size_.allocator())) {}
 
-  // Copy constructor with specific allocator.
+  /// Copy constructor with specific allocator.
+  ///
+  /// @param other The queue to copy from.
+  /// @param alloc The allocator to use.
   chunked_queue(const chunked_queue& other, const allocator_type& alloc)
       : alloc_and_size_(alloc) {
     for (const_reference item : other) {
@@ -268,7 +326,9 @@ class chunked_queue {
     }
   }
 
-  // Move constructor.
+  /// Move constructor.
+  ///
+  /// @param other The queue to move from.
   chunked_queue(chunked_queue&& other) noexcept
       : head_(other.head_),
         tail_(other.tail_),
@@ -278,13 +338,19 @@ class chunked_queue {
     other.alloc_and_size_.size = 0;
   }
 
-  // Replaces contents with those from initializer list `il`.
+  /// Replaces contents with those from initializer list `il`.
+  ///
+  /// @param il The initializer list to copy elements from.
+  /// @return A reference to this queue.
   chunked_queue& operator=(std::initializer_list<T> il) {
     assign(il.begin(), il.end());
     return *this;
   }
 
-  // Copy assignment operator.
+  /// Copy assignment operator.
+  ///
+  /// @param other The queue to copy from.
+  /// @return A reference to this queue.
   chunked_queue& operator=(const chunked_queue& other) {
     if (this == &other) {
       return *this;
@@ -300,28 +366,44 @@ class chunked_queue {
     return *this;
   }
 
-  // Move assignment operator.
+  /// Move assignment operator.
+  ///
+  /// @param other The queue to move from.
+  /// @return A reference to this queue.
   chunked_queue& operator=(chunked_queue&& other) noexcept;
 
-  // Returns true if the queue contains no elements.
+  /// Returns true if the queue contains no elements.
+  ///
+  /// @return true if the queue is empty.
   bool empty() const { return alloc_and_size_.size == 0; }
 
-  // Returns the number of elements in the queue.
+  /// Returns the number of elements in the queue.
+  ///
+  /// @return The number of elements.
   size_t size() const { return alloc_and_size_.size; }
 
-  // Returns the maximum number of elements the queue is able to hold.
+  /// Returns the maximum number of elements the queue is able to hold.
+  ///
+  /// @return The maximum number of elements.
   size_type max_size() const noexcept {
     return AllocatorTraits::max_size(alloc_and_size_.allocator());
   }
 
-  // Resizes the container to contain `new_size` elements.
-  // If `new_size > size()`, additional default-inserted elements are appended.
-  // If `new_size < size()`, elements are removed from the end.
+  /// Resizes the container to contain `new_size` elements.
+  ///
+  /// If `new_size > size()`, additional default-inserted elements are appended.
+  /// If `new_size < size()`, elements are removed from the end.
+  ///
+  /// @param new_size The new number of elements.
   void resize(size_t new_size);
 
-  // Resizes the container to contain `new_size` elements.
-  // If `new_size > size()`, additional copies of `value` are appended.
-  // If `new_size < size()`, elements are removed from the end.
+  /// Resizes the container to contain `new_size` elements.
+  ///
+  /// If `new_size > size()`, additional copies of `value` are appended.
+  /// If `new_size < size()`, elements are removed from the end.
+  ///
+  /// @param new_size The new number of elements.
+  /// @param value The value to copy into any appended elements.
   void resize(size_type new_size, const T& value) {
     if (new_size > size()) {
       size_t to_add = new_size - size();
@@ -333,7 +415,7 @@ class chunked_queue {
     }
   }
 
-  // Requests the removal of unused capacity.
+  /// Requests the removal of unused capacity.
   void shrink_to_fit() {
     // As an optimization clear() leaves the first block of the chunked_queue
     // allocated (but empty). When empty, shrink_to_fit() deallocates the first
@@ -344,7 +426,10 @@ class chunked_queue {
     }
   }
 
-  // Replaces the contents with copies of those in the range [first, last).
+  /// Replaces the contents with copies of those in the range [first, last).
+  ///
+  /// @param first An iterator to the beginning of the range.
+  /// @param last An iterator past the end of the range.
   template <typename Iter,
             typename = std::enable_if_t<
                 base_internal::IsAtLeastInputIterator<Iter>::value>>
@@ -392,7 +477,10 @@ class chunked_queue {
     }
   }
 
-  // Replaces the contents with `count` copies of `value`.
+  /// Replaces the contents with `count` copies of `value`.
+  ///
+  /// @param count The number of elements to create.
+  /// @param value The value to copy into each element.
   void assign(size_type count, const T& value) {
     clear();
     for (size_type i = 0; i < count; ++i) {
@@ -400,18 +488,32 @@ class chunked_queue {
     }
   }
 
-  // Replaces the contents with the elements from the initializer list `il`.
+  /// Replaces the contents with the elements from the initializer list `il`.
+  ///
+  /// @param il The initializer list to copy elements from.
   void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
 
-  // Appends the given element value to the end of the container.
-  // Invalidates `end()` iterator. References to other elements remain valid.
+  /// Appends the given element value to the end of the container.
+  ///
+  /// Invalidates `end()` iterator. References to other elements remain valid.
+  ///
+  /// @param val The value to append.
   void push_back(const T& val) { emplace_back(val); }
+
+  /// Appends the given element value to the end of the container.
+  ///
+  /// Invalidates `end()` iterator. References to other elements remain valid.
+  ///
+  /// @param val The value to append.
   void push_back(T&& val) { emplace_back(std::move(val)); }
 
-  // Appends a new element to the end of the container.
-  // The element is constructed in-place with `args`.
-  // Returns a reference to the new element.
-  // Invalidates `end()` iterator. References to other elements remain valid.
+  /// Appends a new element to the end of the container.
+  ///
+  /// The element is constructed in-place with `args`.
+  /// Invalidates `end()` iterator. References to other elements remain valid.
+  ///
+  /// @param args The arguments used to construct the new element.
+  /// @return A reference to the new element.
   template <typename... A>
   T& emplace_back(A&&... args) {
     T* storage = AllocateBack();
@@ -422,34 +524,55 @@ class chunked_queue {
     return *storage;
   }
 
-  // Removes the first element of the container.
-  // Invalidates iterators to the removed element.
-  // REQUIRES: !empty()
+  /// Removes the first element of the container.
+  ///
+  /// Invalidates iterators to the removed element.
+  /// REQUIRES: !empty()
   void pop_front();
 
-  // Returns a reference to the first element in the container.
-  // REQUIRES: !empty()
+  /// Returns a reference to the first element in the container.
+  ///
+  /// REQUIRES: !empty()
+  ///
+  /// @return A reference to the first element.
   T& front() {
     absl::base_internal::HardeningAssertNonEmpty(*this);
     return *head_;
   }
+
+  /// Returns a const reference to the first element in the container.
+  ///
+  /// REQUIRES: !empty()
+  ///
+  /// @return A const reference to the first element.
   const T& front() const {
     absl::base_internal::HardeningAssertNonEmpty(*this);
     return *head_;
   }
 
-  // Returns a reference to the last element in the container.
-  // REQUIRES: !empty()
+  /// Returns a reference to the last element in the container.
+  ///
+  /// REQUIRES: !empty()
+  ///
+  /// @return A reference to the last element.
   T& back() {
     absl::base_internal::HardeningAssertNonEmpty(*this);
     return *(&*tail_ - 1);
   }
+
+  /// Returns a const reference to the last element in the container.
+  ///
+  /// REQUIRES: !empty()
+  ///
+  /// @return A const reference to the last element.
   const T& back() const {
     absl::base_internal::HardeningAssertNonEmpty(*this);
     return *(&*tail_ - 1);
   }
 
-  // Swaps the contents of this queue with `other`.
+  /// Swaps the contents of this queue with `other`.
+  ///
+  /// @param other The queue to swap with.
   void swap(chunked_queue& other) noexcept {
     using std::swap;
     swap(head_, other.head_);
@@ -468,21 +591,45 @@ class chunked_queue {
     }
   }
 
-  // Erases all elements from the container.
-  // Note: Leaves one empty block allocated as an optimization.
-  // To free all memory, call shrink_to_fit() after calling clear().
+  /// Erases all elements from the container.
+  ///
+  /// Note: Leaves one empty block allocated as an optimization.
+  /// To free all memory, call shrink_to_fit() after calling clear().
   void clear();
 
+  /// Returns an iterator to the first element.
+  ///
+  /// @return An iterator to the beginning of the queue.
   iterator begin() { return head_; }
+
+  /// Returns an iterator past the last element.
+  ///
+  /// @return An iterator to the end of the queue.
   iterator end() { return tail_; }
 
+  /// Returns a const iterator to the first element.
+  ///
+  /// @return A const iterator to the beginning of the queue.
   const_iterator begin() const { return head_; }
+
+  /// Returns a const iterator past the last element.
+  ///
+  /// @return A const iterator to the end of the queue.
   const_iterator end() const { return tail_; }
 
+  /// Returns a const iterator to the first element.
+  ///
+  /// @return A const iterator to the beginning of the queue.
   const_iterator cbegin() const { return head_; }
+
+  /// Returns a const iterator past the last element.
+  ///
+  /// @return A const iterator to the end of the queue.
   const_iterator cend() const { return tail_; }
 
-  // Returns the allocator associated with the container.
+  /// Returns the allocator associated with the container.
+  ///
+  /// @return The allocator.
   allocator_type get_allocator() const { return alloc_and_size_.allocator(); }
 
  private:
@@ -572,6 +719,10 @@ class chunked_queue {
   AllocatorAndSize alloc_and_size_;
 };
 
+/// Swaps the contents of two `absl::chunked_queue` containers.
+///
+/// @param a The first queue.
+/// @param b The second queue.
 template <typename T, size_t BLo, size_t BHi, typename Allocator>
 inline void swap(chunked_queue<T, BLo, BHi, Allocator>& a,
                  chunked_queue<T, BLo, BHi, Allocator>& b) noexcept {

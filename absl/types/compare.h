@@ -57,8 +57,11 @@ ABSL_NAMESPACE_BEGIN
 
 #ifdef ABSL_USES_STD_ORDERING
 
+/// Result of a three-way comparison that may be unordered.
 using std::partial_ordering;
+/// Result of a three-way comparison that is strongly ordered.
 using std::strong_ordering;
+/// Result of a three-way comparison that is weakly ordered.
 using std::weak_ordering;
 
 #else

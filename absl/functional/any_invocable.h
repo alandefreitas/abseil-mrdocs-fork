@@ -49,116 +49,116 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::AnyInvocable
-//
-// `absl::AnyInvocable` is a functional wrapper type, like `std::function`, that
-// assumes ownership of an invocable object. Unlike `std::function`, an
-// `absl::AnyInvocable` is more type-safe and provides the following additional
-// benefits:
-//
-// * Properly adheres to const correctness of the underlying type
-// * Is move-only so avoids concurrency problems with copied invocables and
-//   unnecessary copies in general.
-// * Supports reference qualifiers allowing it to perform unique actions (noted
-//   below).
-//
-// `absl::AnyInvocable` is a template, and an `absl::AnyInvocable` instantiation
-// may wrap any invocable object with a compatible function signature, e.g.
-// having arguments and return types convertible to types matching the
-// `absl::AnyInvocable` signature, and also matching any stated reference
-// qualifiers, as long as that type is moveable. It therefore provides broad
-// type erasure for functional objects.
-//
-// An `absl::AnyInvocable` is typically used as a type-erased function parameter
-// for accepting various functional objects:
-//
-// // Define a function taking an AnyInvocable parameter.
-// void my_func(absl::AnyInvocable<int()> f) {
-//   ...
-// };
-//
-// // That function can accept any invocable type:
-//
-// // Accept a function reference. We don't need to move a reference.
-// int func1() { return 0; };
-// my_func(func1);
-//
-// // Accept a lambda. We use std::move here because otherwise my_func would
-// // copy the lambda.
-// auto lambda = []() { return 0; };
-// my_func(std::move(lambda));
-//
-// // Accept a function pointer. We don't need to move a function pointer.
-// func2 = &func1;
-// my_func(func2);
-//
-// // Accept an std::function by moving it. Note that the lambda is copyable
-// // (satisfying std::function requirements) and moveable (satisfying
-// // absl::AnyInvocable requirements).
-// std::function<int()> func6 = []() { return 0; };
-// my_func(std::move(func6));
-//
-// `AnyInvocable` also properly respects `const` qualifiers, reference
-// qualifiers, and the `noexcept` specification  as part of the user-specified
-// function type (e.g. `AnyInvocable<void() const && noexcept>`). These
-// qualifiers will be applied to the `AnyInvocable` object's `operator()`, and
-// the underlying invocable must be compatible with those qualifiers.
-//
-// Comparison of const and non-const function types:
-//
-//   // Store a closure inside of `func` with the function type `int()`.
-//   // Note that we have made `func` itself `const`.
-//   const AnyInvocable<int()> func = [](){ return 0; };
-//
-//   func();  // Compile-error: the passed type `int()` isn't `const`.
-//
-//   // Store a closure inside of `const_func` with the function type
-//   // `int() const`.
-//   // Note that we have also made `const_func` itself `const`.
-//   const AnyInvocable<int() const> const_func = [](){ return 0; };
-//
-//   const_func();  // Fine: `int() const` is `const`.
-//
-// In the above example, the call `func()` would have compiled if
-// `std::function` were used even though the types are not const compatible.
-// This is a bug, and using `absl::AnyInvocable` properly detects that bug.
-//
-// In addition to affecting the signature of `operator()`, the `const` and
-// reference qualifiers of the function type also appropriately constrain which
-// kinds of invocable objects you are allowed to place into the `AnyInvocable`
-// instance. If you specify a function type that is const-qualified, then
-// anything that you attempt to put into the `AnyInvocable` must be callable on
-// a `const` instance of that type.
-//
-// Constraint example:
-//
-//   // Fine because the lambda is callable when `const`.
-//   AnyInvocable<int() const> func = [=](){ return 0; };
-//
-//   // This is a compile-error because the lambda isn't callable when `const`.
-//   AnyInvocable<int() const> error = [=]() mutable { return 0; };
-//
-// An `&&` qualifier can be used to express that an `absl::AnyInvocable`
-// instance should be invoked at most once:
-//
-//   // Invokes `continuation` with the logical result of an operation when
-//   // that operation completes (common in asynchronous code).
-//   void CallOnCompletion(AnyInvocable<void(int)&&> continuation) {
-//     int result_of_foo = foo();
-//
-//     // `std::move` is required because the `operator()` of `continuation` is
-//     // rvalue-reference qualified.
-//     std::move(continuation)(result_of_foo);
-//   }
-//
-// Attempting to call `absl::AnyInvocable` multiple times in such a case
-// results in undefined behavior.
-//
-// Invoking an empty `absl::AnyInvocable` results in undefined behavior:
-//
-//   // Create an empty instance using the default constructor.
-//   AnyInvocable<void()> empty;
-//   empty();  // WARNING: Undefined behavior!
+/// absl::AnyInvocable
+///
+/// `absl::AnyInvocable` is a functional wrapper type, like `std::function`, that
+/// assumes ownership of an invocable object. Unlike `std::function`, an
+/// `absl::AnyInvocable` is more type-safe and provides the following additional
+/// benefits:
+///
+/// * Properly adheres to const correctness of the underlying type
+/// * Is move-only so avoids concurrency problems with copied invocables and
+///   unnecessary copies in general.
+/// * Supports reference qualifiers allowing it to perform unique actions (noted
+///   below).
+///
+/// `absl::AnyInvocable` is a template, and an `absl::AnyInvocable` instantiation
+/// may wrap any invocable object with a compatible function signature, e.g.
+/// having arguments and return types convertible to types matching the
+/// `absl::AnyInvocable` signature, and also matching any stated reference
+/// qualifiers, as long as that type is moveable. It therefore provides broad
+/// type erasure for functional objects.
+///
+/// An `absl::AnyInvocable` is typically used as a type-erased function parameter
+/// for accepting various functional objects:
+///
+/// // Define a function taking an AnyInvocable parameter.
+/// void my_func(absl::AnyInvocable<int()> f) {
+///   ...
+/// };
+///
+/// // That function can accept any invocable type:
+///
+/// // Accept a function reference. We don't need to move a reference.
+/// int func1() { return 0; };
+/// my_func(func1);
+///
+/// // Accept a lambda. We use std::move here because otherwise my_func would
+/// // copy the lambda.
+/// auto lambda = []() { return 0; };
+/// my_func(std::move(lambda));
+///
+/// // Accept a function pointer. We don't need to move a function pointer.
+/// func2 = &func1;
+/// my_func(func2);
+///
+/// // Accept an std::function by moving it. Note that the lambda is copyable
+/// // (satisfying std::function requirements) and moveable (satisfying
+/// // absl::AnyInvocable requirements).
+/// std::function<int()> func6 = []() { return 0; };
+/// my_func(std::move(func6));
+///
+/// `AnyInvocable` also properly respects `const` qualifiers, reference
+/// qualifiers, and the `noexcept` specification  as part of the user-specified
+/// function type (e.g. `AnyInvocable<void() const && noexcept>`). These
+/// qualifiers will be applied to the `AnyInvocable` object's `operator()`, and
+/// the underlying invocable must be compatible with those qualifiers.
+///
+/// Comparison of const and non-const function types:
+///
+///   // Store a closure inside of `func` with the function type `int()`.
+///   // Note that we have made `func` itself `const`.
+///   const AnyInvocable<int()> func = [](){ return 0; };
+///
+///   func();  // Compile-error: the passed type `int()` isn't `const`.
+///
+///   // Store a closure inside of `const_func` with the function type
+///   // `int() const`.
+///   // Note that we have also made `const_func` itself `const`.
+///   const AnyInvocable<int() const> const_func = [](){ return 0; };
+///
+///   const_func();  // Fine: `int() const` is `const`.
+///
+/// In the above example, the call `func()` would have compiled if
+/// `std::function` were used even though the types are not const compatible.
+/// This is a bug, and using `absl::AnyInvocable` properly detects that bug.
+///
+/// In addition to affecting the signature of `operator()`, the `const` and
+/// reference qualifiers of the function type also appropriately constrain which
+/// kinds of invocable objects you are allowed to place into the `AnyInvocable`
+/// instance. If you specify a function type that is const-qualified, then
+/// anything that you attempt to put into the `AnyInvocable` must be callable on
+/// a `const` instance of that type.
+///
+/// Constraint example:
+///
+///   // Fine because the lambda is callable when `const`.
+///   AnyInvocable<int() const> func = [=](){ return 0; };
+///
+///   // This is a compile-error because the lambda isn't callable when `const`.
+///   AnyInvocable<int() const> error = [=]() mutable { return 0; };
+///
+/// An `&&` qualifier can be used to express that an `absl::AnyInvocable`
+/// instance should be invoked at most once:
+///
+///   // Invokes `continuation` with the logical result of an operation when
+///   // that operation completes (common in asynchronous code).
+///   void CallOnCompletion(AnyInvocable<void(int)&&> continuation) {
+///     int result_of_foo = foo();
+///
+///     // `std::move` is required because the `operator()` of `continuation` is
+///     // rvalue-reference qualified.
+///     std::move(continuation)(result_of_foo);
+///   }
+///
+/// Attempting to call `absl::AnyInvocable` multiple times in such a case
+/// results in undefined behavior.
+///
+/// Invoking an empty `absl::AnyInvocable` results in undefined behavior:
+///
+///   // Create an empty instance using the default constructor.
+///   AnyInvocable<void()> empty;
+///   empty();  // WARNING: Undefined behavior!
 template <class Sig>
 class ABSL_NULLABILITY_COMPATIBLE ABSL_ATTRIBUTE_OWNER AnyInvocable
     : private internal_any_invocable::Impl<Sig> {
@@ -170,56 +170,69 @@ class ABSL_NULLABILITY_COMPATIBLE ABSL_ATTRIBUTE_OWNER AnyInvocable
   using Impl = internal_any_invocable::Impl<Sig>;
 
  public:
-  // The return type of Sig
+  /// The return type of Sig.
   using result_type = typename Impl::result_type;
+  /// Tag indicating that `AnyInvocable` is not a view-like type.
   using absl_internal_is_view = std::false_type;
 
   // Constructors
 
-  // Constructs the `AnyInvocable` in an empty state.
-  // Invoking it results in undefined behavior.
+  /// Constructs the `AnyInvocable` in an empty state.
+  /// Invoking it results in undefined behavior.
   AnyInvocable() noexcept = default;
-  AnyInvocable(std::nullptr_t) noexcept {}  // NOLINT
+  /// Constructs the `AnyInvocable` in an empty state from a null pointer.
+  /// @param unused Unused parameter.
+  AnyInvocable(std::nullptr_t unused) noexcept {}  // NOLINT
 
-  // Constructs the `AnyInvocable` from an existing `AnyInvocable` by a move.
-  // Note that `f` is not guaranteed to be empty after move-construction,
-  // although it may be.
-  AnyInvocable(AnyInvocable&& /*f*/) noexcept = default;
+  /// Constructs the `AnyInvocable` from an existing `AnyInvocable` by a move.
+  /// Note that `f` is not guaranteed to be empty after move-construction,
+  /// although it may be.
+  /// @param f The `AnyInvocable` to move from.
+  AnyInvocable(AnyInvocable&& f) noexcept = default;
 
-  // Constructs an `AnyInvocable` from an invocable object.
-  //
-  // Upon construction, `*this` is only empty if `f` is a function pointer or
-  // member pointer type and is null, or if `f` is an `AnyInvocable` that is
-  // empty.
+  /// Constructs an `AnyInvocable` from an invocable object.
+  ///
+  /// Upon construction, `*this` is only empty if `f` is a function pointer or
+  /// member pointer type and is null, or if `f` is an `AnyInvocable` that is
+  /// empty.
+  ///
+  /// @param f The invocable object to wrap.
   template <class F, typename = std::enable_if_t<
                          internal_any_invocable::CanConvert<Sig, F>::value>>
   AnyInvocable(F&& f)  // NOLINT
       : Impl(internal_any_invocable::ConversionConstruct(),
              std::forward<F>(f)) {}
 
-  // Constructs an `AnyInvocable` that holds an invocable object of type `T`,
-  // which is constructed in-place from the given arguments.
-  //
-  // Example:
-  //
-  //   AnyInvocable<int(int)> func(
-  //       std::in_place_type<PossiblyImmovableType>, arg1, arg2);
-  //
+  /// Constructs an `AnyInvocable` that holds an invocable object of type `T`,
+  /// which is constructed in-place from the given arguments.
+  ///
+  /// Example:
+  ///
+  ///   AnyInvocable<int(int)> func(
+  ///       std::in_place_type<PossiblyImmovableType>, arg1, arg2);
+  ///
+  /// @param args Arguments forwarded to the constructor of `T`.
+  /// @param tag A tag that selects this overload.
   template <class T, class... Args,
             typename = std::enable_if_t<
                 internal_any_invocable::CanEmplace<Sig, T, Args...>::value>>
-  explicit AnyInvocable(std::in_place_type_t<T>, Args&&... args)
+  explicit AnyInvocable(std::in_place_type_t<T> tag, Args&&... args)
       : Impl(std::in_place_type<std::decay_t<T>>, std::forward<Args>(args)...) {
     static_assert(std::is_same_v<T, std::decay_t<T>>,
                   "The explicit template argument of in_place_type is required "
                   "to be an unqualified object type.");
   }
 
-  // Overload of the above constructor to support list-initialization.
+  /// Overload of the above constructor to support list-initialization.
+  ///
+  /// @param ilist Initializer list forwarded to the constructor of `T`.
+  /// @param args Additional arguments forwarded to the constructor of `T`.
+  /// @param tag A tag that selects this overload.
   template <class T, class U, class... Args,
             typename = std::enable_if_t<internal_any_invocable::CanEmplace<
                 Sig, T, std::initializer_list<U>&, Args...>::value>>
-  explicit AnyInvocable(std::in_place_type_t<T>, std::initializer_list<U> ilist,
+  explicit AnyInvocable(std::in_place_type_t<T> tag,
+                        std::initializer_list<U> ilist,
                         Args&&... args)
       : Impl(std::in_place_type<std::decay_t<T>>, ilist,
              std::forward<Args>(args)...) {
@@ -230,23 +243,32 @@ class ABSL_NULLABILITY_COMPATIBLE ABSL_ATTRIBUTE_OWNER AnyInvocable
 
   // Assignment Operators
 
-  // Assigns an `AnyInvocable` through move-assignment.
-  // Note that `f` is not guaranteed to be empty after move-assignment
-  // although it may be.
-  AnyInvocable& operator=(AnyInvocable&& /*f*/) noexcept = default;
+  /// Assigns an `AnyInvocable` through move-assignment.
+  /// Note that `f` is not guaranteed to be empty after move-assignment
+  /// although it may be.
+  ///
+  /// @param f The `AnyInvocable` to move from.
+  /// @return A reference to `*this`.
+  AnyInvocable& operator=(AnyInvocable&& f) noexcept = default;
 
-  // Assigns an `AnyInvocable` from a nullptr, clearing the `AnyInvocable`. If
-  // not empty, destroys the target, putting `*this` into an empty state.
-  AnyInvocable& operator=(std::nullptr_t) noexcept {
+  /// Assigns an `AnyInvocable` from a nullptr, clearing the `AnyInvocable`. If
+  /// not empty, destroys the target, putting `*this` into an empty state.
+  ///
+  /// @param unused Unused parameter.
+  /// @return A reference to `*this`.
+  AnyInvocable& operator=(std::nullptr_t unused) noexcept {
     this->Clear();
     return *this;
   }
 
-  // Assigns an `AnyInvocable` from an existing `AnyInvocable` instance.
-  //
-  // Upon assignment, `*this` is only empty if `f` is a function pointer or
-  // member pointer type and is null, or if `f` is an `AnyInvocable` that is
-  // empty.
+  /// Assigns an `AnyInvocable` from an existing `AnyInvocable` instance.
+  ///
+  /// Upon assignment, `*this` is only empty if `f` is a function pointer or
+  /// member pointer type and is null, or if `f` is an `AnyInvocable` that is
+  /// empty.
+  ///
+  /// @param f The invocable object to assign.
+  /// @return A reference to `*this`.
   template <class F, typename = std::enable_if_t<
                          internal_any_invocable::CanAssign<Sig, F>::value>>
   AnyInvocable& operator=(F&& f) {
@@ -254,9 +276,12 @@ class ABSL_NULLABILITY_COMPATIBLE ABSL_ATTRIBUTE_OWNER AnyInvocable
     return *this;
   }
 
-  // Assigns an `AnyInvocable` from a reference to an invocable object.
-  // Upon assignment, stores a reference to the invocable object in the
-  // `AnyInvocable` instance.
+  /// Assigns an `AnyInvocable` from a reference to an invocable object.
+  /// Upon assignment, stores a reference to the invocable object in the
+  /// `AnyInvocable` instance.
+  ///
+  /// @param f The invocable object to reference.
+  /// @return A reference to `*this`.
   template <
       class F,
       typename = std::enable_if_t<
@@ -268,26 +293,30 @@ class ABSL_NULLABILITY_COMPATIBLE ABSL_ATTRIBUTE_OWNER AnyInvocable
 
   // Destructor
 
-  // If not empty, destroys the target.
+  /// If not empty, destroys the target.
   ~AnyInvocable() = default;
 
-  // absl::AnyInvocable::swap()
-  //
-  // Exchanges the targets of `*this` and `other`.
+  /// absl::AnyInvocable::swap()
+  ///
+  /// Exchanges the targets of `*this` and `other`.
+  ///
+  /// @param other The `AnyInvocable` to swap with.
   void swap(AnyInvocable& other) noexcept { std::swap(*this, other); }
 
-  // absl::AnyInvocable::operator bool()
-  //
-  // Returns `true` if `*this` is not empty.
-  //
-  // WARNING: An `AnyInvocable` that wraps an empty `std::function` is not
-  // itself empty. This behavior is consistent with the standard equivalent
-  // `std::move_only_function`. In the following example, `a()` will actually
-  // invoke `f()`, leading to an `std::bad_function_call` exception:
-  //   std::function<void()> f;  // empty
-  //   absl::AnyInvocable<void()> a = f;  // not empty
-  //
-  // Invoking an empty `AnyInvocable` results in undefined behavior.
+  /// absl::AnyInvocable::operator bool()
+  ///
+  /// Returns `true` if `*this` is not empty.
+  ///
+  /// WARNING: An `AnyInvocable` that wraps an empty `std::function` is not
+  /// itself empty. This behavior is consistent with the standard equivalent
+  /// `std::move_only_function`. In the following example, `a()` will actually
+  /// invoke `f()`, leading to an `std::bad_function_call` exception:
+  ///   std::function<void()> f;  // empty
+  ///   absl::AnyInvocable<void()> a = f;  // not empty
+  ///
+  /// Invoking an empty `AnyInvocable` results in undefined behavior.
+  ///
+  /// @return `true` if `*this` is not empty.
   explicit operator bool() const noexcept { return this->HasValue(); }
 
   // Invokes the target object of `*this`. `*this` must not be empty.
@@ -298,33 +327,53 @@ class ABSL_NULLABILITY_COMPATIBLE ABSL_ATTRIBUTE_OWNER AnyInvocable
 
   // Equality operators
 
-  // Returns `true` if `f` is empty.
-  friend bool operator==(const AnyInvocable& f, std::nullptr_t) noexcept {
+  /// Returns `true` if `f` is empty.
+  ///
+  /// @param f The `AnyInvocable` to check.
+  /// @param unused Unused parameter.
+  /// @return `true` if `f` is empty.
+  friend bool operator==(const AnyInvocable& f, std::nullptr_t unused) noexcept {
     return !f.HasValue();
   }
 
-  // Returns `true` if `f` is empty.
-  friend bool operator==(std::nullptr_t, const AnyInvocable& f) noexcept {
+  /// Returns `true` if `f` is empty.
+  ///
+  /// @param f The `AnyInvocable` to check.
+  /// @param unused Unused parameter.
+  /// @return `true` if `f` is empty.
+  friend bool operator==(std::nullptr_t unused, const AnyInvocable& f) noexcept {
     return !f.HasValue();
   }
 
-  // Returns `false` if `f` is empty.
-  friend bool operator!=(const AnyInvocable& f, std::nullptr_t) noexcept {
+  /// Returns `false` if `f` is empty.
+  ///
+  /// @param f The `AnyInvocable` to check.
+  /// @param unused Unused parameter.
+  /// @return `false` if `f` is empty.
+  friend bool operator!=(const AnyInvocable& f, std::nullptr_t unused) noexcept {
     return f.HasValue();
   }
 
-  // Returns `false` if `f` is empty.
-  friend bool operator!=(std::nullptr_t, const AnyInvocable& f) noexcept {
+  /// Returns `false` if `f` is empty.
+  ///
+  /// @param f The `AnyInvocable` to check.
+  /// @param unused Unused parameter.
+  /// @return `false` if `f` is empty.
+  friend bool operator!=(std::nullptr_t unused, const AnyInvocable& f) noexcept {
     return f.HasValue();
   }
 
-  // swap()
-  //
-  // Exchanges the targets of `f1` and `f2`.
+  /// swap()
+  ///
+  /// Exchanges the targets of `f1` and `f2`.
+  ///
+  /// @param f1 The first `AnyInvocable` to swap.
+  /// @param f2 The second `AnyInvocable` to swap.
   friend void swap(AnyInvocable& f1, AnyInvocable& f2) noexcept { f1.swap(f2); }
 
  private:
-  // Friending other instantiations is necessary for conversions.
+  /// Grants friendship to other `AnyInvocable` instantiations so they can
+  /// access this target during converting construction and assignment.
   template <bool /*SigIsNoexcept*/, class /*ReturnType*/, class... /*P*/>
   friend class internal_any_invocable::CoreImpl;
 };

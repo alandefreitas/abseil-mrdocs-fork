@@ -29,25 +29,40 @@
 #include "absl/base/config.h"
 #include "absl/base/macros.h"
 
+// Google extensions to the standard `<algorithm>` C++ header.
+//
+// Historical note: Abseil once provided implementations of `equal` and
+// `rotate` prior to their adoption in C++14. New code should prefer the
+// `std` variants. See the documentation for the STL `<algorithm>` header
+// for more information: https://en.cppreference.com/w/cpp/header/algorithm
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// equal()
-// rotate()
-//
-// Historical note: Abseil once provided implementations of these algorithms
-// prior to their adoption in C++14. New code should prefer to use the std
-// variants.
-//
-// See the documentation for the STL <algorithm> header for more information:
-// https://en.cppreference.com/w/cpp/header/algorithm
-
+/// Determines whether two ranges are equal.
+///
+/// Compares the elements in the range `[first1, last1)` with the range
+/// beginning at `first2`, using `operator==`.
+///
+/// @param first1 Iterator to the first element of the first range.
+/// @param last1 Iterator one past the last element of the first range.
+/// @param first2 Iterator to the first element of the second range.
+/// @return `true` if the two ranges compare element-wise equal.
 template <class InputIt1, class InputIt2>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2) {
   return std::equal(first1, last1, first2);
 }
 
+/// Determines whether two ranges are equal using a custom predicate.
+///
+/// Compares the elements in the range `[first1, last1)` with the range
+/// beginning at `first2`, using the binary predicate `p`.
+///
+/// @param first1 Iterator to the first element of the first range.
+/// @param last1 Iterator one past the last element of the first range.
+/// @param first2 Iterator to the first element of the second range.
+/// @param p Binary predicate used to compare corresponding elements.
+/// @return `true` if every compared pair of elements satisfies `p`.
 template <class InputIt1, class InputIt2, class BinaryPredicate>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2,
@@ -55,6 +70,17 @@ constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2,
   return std::equal(first1, last1, first2, p);
 }
 
+/// Determines whether two bounded ranges are equal.
+///
+/// Compares the elements in the range `[first1, last1)` with the range
+/// `[first2, last2)`, using `operator==`.
+///
+/// @param first1 Iterator to the first element of the first range.
+/// @param last1 Iterator one past the last element of the first range.
+/// @param first2 Iterator to the first element of the second range.
+/// @param last2 Iterator one past the last element of the second range.
+/// @return `true` if the two ranges have equal length and compare
+///   element-wise equal.
 template <class InputIt1, class InputIt2>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2,
@@ -62,6 +88,18 @@ constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2,
   return std::equal(first1, last1, first2, last2);
 }
 
+/// Determines whether two bounded ranges are equal using a custom predicate.
+///
+/// Compares the elements in the range `[first1, last1)` with the range
+/// `[first2, last2)`, using the binary predicate `p`.
+///
+/// @param first1 Iterator to the first element of the first range.
+/// @param last1 Iterator one past the last element of the first range.
+/// @param first2 Iterator to the first element of the second range.
+/// @param last2 Iterator one past the last element of the second range.
+/// @param p Binary predicate used to compare corresponding elements.
+/// @return `true` if the two ranges have equal length and every compared
+///   pair of elements satisfies `p`.
 template <class InputIt1, class InputIt2, class BinaryPredicate>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2,
@@ -69,21 +107,35 @@ constexpr bool equal(InputIt1 first1, InputIt1 last1, InputIt2 first2,
   return std::equal(first1, last1, first2, last2, p);
 }
 
+/// Rotates the elements in a range so that `n_first` becomes the new first.
+///
+/// Performs a left rotation on the range `[first, last)` such that the
+/// element pointed to by `n_first` becomes the first element of the range.
+///
+/// @param first Iterator to the first element of the range.
+/// @param n_first Iterator to the element that should become the new first.
+/// @param last Iterator one past the last element of the range.
+/// @return An iterator to the new location of the element previously at
+///   `first`.
 template <class ForwardIt>
 ABSL_DEPRECATE_AND_INLINE()
 constexpr ForwardIt rotate(ForwardIt first, ForwardIt n_first, ForwardIt last) {
   return std::rotate(first, n_first, last);
 }
 
-// linear_search()
-//
-// Performs a linear search for `value` using the iterator `first` up to
-// but not including `last`, returning true if [`first`, `last`) contains an
-// element equal to `value`.
-//
-// A linear search is of O(n) complexity which is guaranteed to make at most
-// n = (`last` - `first`) comparisons. A linear search over short containers
-// may be faster than a binary search, even when the container is sorted.
+/// Performs a linear search for a value in a range.
+///
+/// Searches the range `[first, last)` and returns `true` if it contains an
+/// element equal to `value`.
+///
+/// A linear search is of O(n) complexity and makes at most
+/// n = (`last` - `first`) comparisons. A linear search over short containers
+/// may be faster than a binary search, even when the container is sorted.
+///
+/// @param first Iterator to the first element of the range to search.
+/// @param last Iterator one past the last element of the range to search.
+/// @param value The value to search for.
+/// @return `true` if `[first, last)` contains an element equal to `value`.
 template <typename InputIterator, typename EqualityComparable>
 constexpr bool linear_search(InputIterator first, InputIterator last,
                              const EqualityComparable& value) {

@@ -78,58 +78,63 @@ ABSL_NAMESPACE_BEGIN
 template <typename T>
 using Flag = flags_internal::Flag<T>;
 
-// GetFlag()
-//
-// Returns the value (of type `T`) of an `absl::Flag<T>` instance, by value. Do
-// not construct an `absl::Flag<T>` directly and call `absl::GetFlag()`;
-// instead, refer to flag's constructed variable name (e.g. `FLAGS_name`).
-// Because this function returns by value and not by reference, it is
-// thread-safe, but note that the operation may be expensive; as a result, avoid
-// `absl::GetFlag()` within any tight loops.
-//
-// Example:
-//
-//   // FLAGS_count is a Flag of type `int`
-//   int my_count = absl::GetFlag(FLAGS_count);
-//
-//   // FLAGS_firstname is a Flag of type `std::string`
-//   std::string first_name = absl::GetFlag(FLAGS_firstname);
+/// Returns the value (of type `T`) of an `absl::Flag<T>` instance, by value.
+/// Do not construct an `absl::Flag<T>` directly and call `absl::GetFlag()`;
+/// instead, refer to flag's constructed variable name (e.g. `FLAGS_name`).
+/// Because this function returns by value and not by reference, it is
+/// thread-safe, but note that the operation may be expensive; as a result,
+/// avoid `absl::GetFlag()` within any tight loops.
+///
+/// Example:
+///
+///   // FLAGS_count is a Flag of type `int`
+///   int my_count = absl::GetFlag(FLAGS_count);
+///
+///   // FLAGS_firstname is a Flag of type `std::string`
+///   std::string first_name = absl::GetFlag(FLAGS_firstname);
+///
+/// @param flag The flag whose value to retrieve.
+/// @return The current value of `flag`.
 template <typename T>
 [[nodiscard]] T GetFlag(const absl::Flag<T>& flag) {
   return flags_internal::FlagImplPeer::InvokeGet<T>(flag);
 }
 
-// SetFlag()
-//
-// Sets the value of an `absl::Flag` to the value `v`. Do not construct an
-// `absl::Flag<T>` directly and call `absl::SetFlag()`; instead, use the
-// flag's variable name (e.g. `FLAGS_name`). This function is
-// thread-safe, but is potentially expensive. Avoid setting flags in general,
-// but especially within performance-critical code.
+/// Sets the value of an `absl::Flag` to the value `v`. Do not construct an
+/// `absl::Flag<T>` directly and call `absl::SetFlag()`; instead, use the
+/// flag's variable name (e.g. `FLAGS_name`). This function is thread-safe,
+/// but is potentially expensive. Avoid setting flags in general, but
+/// especially within performance-critical code.
+///
+/// @param flag The flag to update.
+/// @param v The new value to assign to `flag`.
 template <typename T>
 void SetFlag(absl::Flag<T>* absl_nonnull flag, const T& v) {
   flags_internal::FlagImplPeer::InvokeSet(*flag, v);
 }
 
-// Overload of `SetFlag()` to allow callers to pass in a value that is
-// convertible to `T`. E.g., use this overload to pass a "const char*" when `T`
-// is `std::string`.
+/// Overload of `SetFlag()` to allow callers to pass in a value that is
+/// convertible to `T`. E.g., use this overload to pass a "const char*" when
+/// `T` is `std::string`.
+///
+/// @param flag The flag to update.
+/// @param v The new value to assign to `flag`, convertible to `T`.
 template <typename T, typename V>
 void SetFlag(absl::Flag<T>* absl_nonnull flag, const V& v) {
   T value(v);
   flags_internal::FlagImplPeer::InvokeSet(*flag, value);
 }
 
-// GetFlagReflectionHandle()
-//
-// Returns the reflection handle corresponding to specified Abseil Flag
-// instance. Use this handle to access flag's reflection information, like name,
-// location, default value etc.
-//
-// Example:
-//
-//   std::string = absl::GetFlagReflectionHandle(FLAGS_count).DefaultValue();
-
+/// Returns the reflection handle corresponding to specified Abseil Flag
+/// instance. Use this handle to access flag's reflection information, like
+/// name, location, default value etc.
+///
+/// Example:
+///
+///   std::string = absl::GetFlagReflectionHandle(FLAGS_count).DefaultValue();
+///
+/// @param f The flag whose reflection handle to retrieve.
+/// @return The reflection handle for `f`.
 template <typename T>
 const CommandLineFlag& GetFlagReflectionHandle(const absl::Flag<T>& f) {
   return flags_internal::FlagImplPeer::InvokeReflect(f);

@@ -36,27 +36,86 @@ ABSL_NAMESPACE_BEGIN
 // both with and without exceptions and you need to conform to an interface
 // that uses exceptions.
 
+/// Throws a `std::logic_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdLogicError(const std::string& what_arg);
+/// Throws a `std::logic_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdLogicError(const char* what_arg);
+/// Throws a `std::invalid_argument` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdInvalidArgument(const std::string& what_arg);
+/// Throws a `std::invalid_argument` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdInvalidArgument(const char* what_arg);
+/// Throws a `std::domain_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdDomainError(const std::string& what_arg);
+/// Throws a `std::domain_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdDomainError(const char* what_arg);
+/// Throws a `std::length_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdLengthError(const std::string& what_arg);
+/// Throws a `std::length_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdLengthError(const char* what_arg);
+/// Throws a `std::out_of_range` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdOutOfRange(const std::string& what_arg);
+/// Throws a `std::out_of_range` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdOutOfRange(const char* what_arg);
+/// Throws a `std::runtime_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdRuntimeError(const std::string& what_arg);
+/// Throws a `std::runtime_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdRuntimeError(const char* what_arg);
+/// Throws a `std::range_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdRangeError(const std::string& what_arg);
+/// Throws a `std::range_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdRangeError(const char* what_arg);
+/// Throws a `std::overflow_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdOverflowError(const std::string& what_arg);
+/// Throws a `std::overflow_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdOverflowError(const char* what_arg);
+/// Throws a `std::underflow_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdUnderflowError(const std::string& what_arg);
+/// Throws a `std::underflow_error` with the given message, or terminates if
+/// exceptions are disabled.
+/// @param what_arg The exception message.
 [[noreturn]] void ThrowStdUnderflowError(const char* what_arg);
 
+/// Throws a `std::bad_function_call`, or terminates if exceptions are
+/// disabled.
 [[noreturn]] void ThrowStdBadFunctionCall();
+/// Throws a `std::bad_alloc`, or terminates if exceptions are disabled.
 [[noreturn]] void ThrowStdBadAlloc();
+/// Throws a `std::bad_array_new_length`, or terminates if exceptions are
+/// disabled.
 [[noreturn]] void ThrowStdBadArrayNewLength();
 
 ABSL_NAMESPACE_END

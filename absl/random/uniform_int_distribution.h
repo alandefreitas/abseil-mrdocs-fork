@@ -43,18 +43,16 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::uniform_int_distribution<T>
-//
-// This distribution produces random integer values uniformly distributed in the
-// closed (inclusive) interval [a, b].
-//
-// Example:
-//
-//   absl::BitGen gen;
-//
-//   // Use the distribution to produce a value between 1 and 6, inclusive.
-//   int die_roll = absl::uniform_int_distribution<int>(1, 6)(gen);
-//
+/// This distribution produces random integer values uniformly distributed in
+/// the closed (inclusive) interval [a, b].
+///
+/// Example:
+///
+///   absl::BitGen gen;
+///
+///   // Use the distribution to produce a value between 1 and 6, inclusive.
+///   int die_roll = absl::uniform_int_distribution<int>(1, 6)(gen);
+///
 template <typename IntType = int>
 class uniform_int_distribution {
  private:
@@ -62,12 +60,19 @@ class uniform_int_distribution {
       typename random_internal::make_unsigned_bits<IntType>::type;
 
  public:
+  /// The type of the values produced by the distribution.
   using result_type = IntType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = uniform_int_distribution;
 
+    /// Constructs the parameter set from the interval bounds.
+    ///
+    /// @param lo The lower bound of the closed interval.
+    /// @param hi The upper bound of the closed interval.
     explicit param_type(
         result_type lo = 0,
         result_type hi = (std::numeric_limits<result_type>::max)())
@@ -78,15 +83,31 @@ class uniform_int_distribution {
       assert(lo <= hi);
     }
 
+    /// Returns the lower bound of the interval.
+    ///
+    /// @return The lower bound `a`.
     result_type a() const { return lo_; }
+    /// Returns the upper bound of the interval.
+    ///
+    /// @return The upper bound `b`.
     result_type b() const {
       return static_cast<result_type>(static_cast<unsigned_type>(lo_) + range_);
     }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.lo_ == b.lo_ && a.range_ == b.range_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -103,45 +124,90 @@ class uniform_int_distribution {
                   "parameterized using an integral type.");
   };  // param_type
 
+  /// Constructs a distribution over the entire range of `result_type`.
   uniform_int_distribution() : uniform_int_distribution(0) {}
 
+  /// Constructs a distribution over the closed interval [lo, hi].
+  ///
+  /// @param lo The lower bound of the closed interval.
+  /// @param hi The upper bound of the closed interval.
   explicit uniform_int_distribution(
       result_type lo,
       result_type hi = (std::numeric_limits<result_type>::max)())
       : param_(lo, hi) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param param The parameter set.
   explicit uniform_int_distribution(const param_type& param) : param_(param) {}
 
-  // uniform_int_distribution<T>::reset()
-  //
-  // Resets the uniform int distribution. Note that this function has no effect
-  // because the distribution already produces independent values.
+  /// Resets the uniform int distribution.
+  ///
+  /// Note that this function has no effect because the distribution already
+  /// produces independent values.
   void reset() {}
 
+  /// Generates a random value in the interval [a, b].
+  ///
+  /// @param gen The uniform random bit generator.
+  /// @return A random value in the closed interval [a, b].
   template <typename URBG>
   result_type operator()(URBG& gen) {  // NOLINT(runtime/references)
     return (*this)(gen, param());
   }
 
+  /// Generates a random value using the given parameter set.
+  ///
+  /// @param gen The uniform random bit generator.
+  /// @param param The parameter set to use for this call.
+  /// @return A random value in the closed interval [a, b].
   template <typename URBG>
   result_type operator()(
       URBG& gen, const param_type& param) {  // NOLINT(runtime/references)
     return static_cast<result_type>(param.a() + Generate(gen, param.range()));
   }
 
+  /// Returns the lower bound of the interval.
+  ///
+  /// @return The lower bound `a`.
   result_type a() const { return param_.a(); }
+  /// Returns the upper bound of the interval.
+  ///
+  /// @return The upper bound `b`.
   result_type b() const { return param_.b(); }
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param params The new parameter set.
   void param(const param_type& params) { param_ = params; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return The lower bound `a`.
   result_type(min)() const { return a(); }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return The upper bound `b`.
   result_type(max)() const { return b(); }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const uniform_int_distribution& a,
                          const uniform_int_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const uniform_int_distribution& a,
                          const uniform_int_distribution& b) {
     return !(a == b);
@@ -158,6 +224,11 @@ class uniform_int_distribution {
 // -----------------------------------------------------------------------------
 // Implementation details follow
 // -----------------------------------------------------------------------------
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,
@@ -170,6 +241,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename IntType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,

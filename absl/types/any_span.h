@@ -230,30 +230,39 @@ ABSL_NAMESPACE_BEGIN
 // prefer to use these functors whenever possible, as they may trigger internal
 // optimizations that are otherwise not possible, and they are valid for the
 // duration of the program, so you do not have to worry about their lifetime.
+/// Accessors returning Transform functors that may be passed to `AnySpan`.
 namespace any_span_transform {
 
-//
-// Identity() returns a functor that returns whatever is passed to it. Generally
-// you should prefer to use AnySpan's implicit constructor directly, but this
-// may be useful if you are writing templates on top of AnySpan.
-//
-// Returns a const reference so that callers don't have to worry about
-// lifetime of the functor.
-//
-
+/// Functor that returns whatever is passed to it unchanged.
 struct IdentityT {
+  /// Returns its argument unchanged.
+  ///
+  /// @param v The value to return.
+  /// @return A reference to `v`.
   template <typename T>
   T& operator()(T& v) const {  // NOLINT(runtime/references)
     return v;
   }
 };
 
+/// Returns a functor that returns whatever is passed to it.
+///
+/// Prefer `AnySpan`'s implicit constructor directly; this may be useful when
+/// writing templates on top of `AnySpan`. The reference stays valid for the
+/// duration of the program.
+///
+/// @return A const reference to the shared identity functor.
 inline const IdentityT& Identity() {
   static const IdentityT f = {};
   return f;
 }
 
+/// Functor that dereferences whatever is passed to it.
 struct DerefT {
+  /// Dereferences its argument.
+  ///
+  /// @param ptr The pointer-like object to dereference; must not be null.
+  /// @return A reference to the pointed-to value.
   template <typename Ptr>
   auto operator()(Ptr& ptr) const  // NOLINT(runtime/references)
       -> decltype(*ptr) {
@@ -262,13 +271,13 @@ struct DerefT {
   }
 };
 
-// Deref() returns a functor that dereferences whatever is passed to it. It
-// works for smart and raw pointers, as well as std::optional. Do not use this
-// with containers that may contain elements that cannot be dereferenced, such
-// as null pointers.
-//
-// Returns a const reference so that callers don't have to worry about lifetime
-// of the functor.
+/// Returns a functor that dereferences whatever is passed to it.
+///
+/// Works for smart and raw pointers, as well as `std::optional`. Do not use it
+/// with containers holding elements that cannot be dereferenced, such as null
+/// pointers. The reference stays valid for the duration of the program.
+///
+/// @return A const reference to the shared deref functor.
 inline const DerefT& Deref() {
   static const DerefT f = {};
   return f;
@@ -276,14 +285,13 @@ inline const DerefT& Deref() {
 
 }  // namespace any_span_transform
 
-// Utilities for adapting things to look like the interface that AnySpan
-// expects. For the most part this is based on iterators and views, and is
-// intended to be composed with absl/types/iterator_adaptors.h.
+/// Utilities for adapting objects to the interface that `AnySpan` expects.
 namespace any_span_adaptor {
 
-// Adapts a pair of iterators into a container-like object that AnySpan can
-// wrap. This is useful if you are faced with a range or view of random access
-// iterators. Iter must be a valid random access iterator.
+/// Adapts a pair of iterators into a container-like object for `AnySpan`.
+///
+/// Useful when faced with a range or view of random access iterators. `Iter`
+/// must be a valid random access iterator.
 template <typename Iter>
 class Range {
  public:
@@ -292,14 +300,25 @@ class Range {
                      std::random_access_iterator_tag>,
       "Iter must be a random access iterator.");
 
+  /// Constructs a range over `[begin, end)`.
+  ///
+  /// @param begin Iterator to the first element.
+  /// @param end Iterator just past the last element.
   Range(Iter begin, Iter end) {
     absl::base_internal::HardeningAssertLE(begin, end);
     begin_ = begin;
     end_ = end;
   }
 
+  /// Returns the number of elements in the range.
+  ///
+  /// @return The size of the range.
   std::size_t size() const { return end_ - begin_; }
 
+  /// Returns the element at index `i`.
+  ///
+  /// @param i Index of the element to access.
+  /// @return The element at index `i`.
   decltype(std::declval<Iter>()[0]) operator[](std::size_t i) const {
     absl::base_internal::HardeningAssertLT(i, size());
     return begin_[i];
@@ -310,17 +329,26 @@ class Range {
   Iter end_;
 };
 
-// Returns a Range adaptor that wraps the given pair of iterators. The return
-// value of this function must outlive any spans that use it. Iter must be a
-// valid random access iterator.
+/// Returns a `Range` adaptor wrapping the given pair of iterators.
+///
+/// The return value must outlive any spans that use it. `Iter` must be a valid
+/// random access iterator.
+///
+/// @param begin Iterator to the first element.
+/// @param end Iterator just past the last element.
+/// @return A `Range` over `[begin, end)`.
 template <typename Iter>
 Range<Iter> MakeAdaptorFromRange(Iter begin, Iter end) {
   return Range<Iter>(begin, end);
 }
 
-// Returns a Range adaptor that wraps the given view. The begin() and end()
-// functions of the given view must return valid random access iterators. The
-// return value of this function must outlive any spans that use it.
+/// Returns a `Range` adaptor wrapping the given view.
+///
+/// The view's `begin()` and `end()` must return valid random access iterators.
+/// The return value must outlive any spans that use it.
+///
+/// @param view The view to adapt.
+/// @return A `Range` over the view's elements.
 template <typename View>
 auto MakeAdaptorFromView(View& view)  // NOLINT(runtime/references)
     -> Range<decltype(view.begin())> {
@@ -332,6 +360,12 @@ auto MakeAdaptorFromView(View& view)  // NOLINT(runtime/references)
 template <typename T>
 class AnySpan;
 
+/// A type-erased, non-owning view over a random-access sequence.
+///
+/// Like `absl::Span`, an `AnySpan` refers to elements owned elsewhere, but it
+/// can wrap any container, array, or view of a compatible element type and can
+/// apply a transform to each element on access. It must not outlive the data,
+/// transform, or container it refers to.
 template <typename T>
 class ABSL_ATTRIBUTE_VIEW AnySpan {
  private:
@@ -384,59 +418,58 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       std::enable_if_t<!any_span_internal::kIsTransformCopied<Transform>, bool>;
 
  public:
+  /// The element type, including any const-qualification.
   using element_type = T;
+  /// The element type with const removed.
   using value_type = std::remove_const_t<T>;
+  /// An unsigned type used for sizes and indices.
   using size_type = std::size_t;
+  /// A signed type used for iterator differences.
   using difference_type = std::ptrdiff_t;
+  /// Tag marking `AnySpan` as a view type.
   using absl_internal_is_view = std::true_type;
 
+  /// Sentinel size value meaning "until the end of the span".
   static constexpr size_type npos = static_cast<size_type>(-1);  // NOLINT
 
+  /// A reference to an element.
   using reference = T&;
+  /// A reference to a const element.
   using const_reference = std::add_const_t<T>&;
 
+  /// A pointer to an element.
   using pointer = T*;
+  /// A pointer to a const element.
   using const_pointer = std::add_const_t<T>*;
 
   // Note that iterator will be const if T is const.
   class iterator;
   class const_iterator;
 
+  /// A reverse iterator over the elements.
   using reverse_iterator = std::reverse_iterator<iterator>;
+  /// A reverse iterator over const elements.
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  // Null and empty by default.
+  /// Constructs an empty (null) span.
   AnySpan() = default;
 
-  // Creates a span that wraps an initializer list. This makes it possible to
-  // pass a brace-enclosed initializer list to a function expecting an AnySpan.
-  //
-  // Example:
-  //
-  //   void Process(AnySpan<const int> x);
-  //   Process({1, 2, 3});
-  //
-  // The initializer_list must outlive this AnySpan.
+  /// Constructs a span wrapping an initializer list.
+  ///
+  /// The initializer list must outlive this span.
+  ///
+  /// @param l The initializer list whose elements the span refers to.
   constexpr AnySpan(  // NOLINT(google-explicit-constructor)
       std::initializer_list<value_type> l ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : AnySpan(l.begin(), l.size()) {}
 
-  // Creates a span that wraps an initializer list of a type other than
-  // value_type, or with an explicit transform. Applies the optional transform
-  // to elements before returning them.
-  //
-  // Example:
-  //
-  //   struct Base {};
-  //   struct Derived : Base {};
-  //
-  //   void Process(AnySpan<const Base> x);
-  //   Process({Derived(a), Derived(b), Derived(c)});
-  //
-  //     where the default identity transform would apply an implicit
-  //     derived-to-base  conversion.
-  //
-  // The initializer_list must outlive this AnySpan.
+  /// Constructs a span wrapping an initializer list, applying a transform.
+  ///
+  /// Useful for a list of a type other than `value_type`. The transform is
+  /// taken by copy. The initializer list must outlive this span.
+  ///
+  /// @param l The initializer list whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, typename Transform,
             typename = EnableIfTransformIsValid<Transform, const Element&>,
             EnableIfTransformIsByCopy<Transform> = true>
@@ -444,6 +477,13 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                         ABSL_ATTRIBUTE_LIFETIME_BOUND,
                     const Transform& transform)
       : AnySpan(l.begin(), l.size(), transform) {}
+  /// Constructs a span wrapping an initializer list, applying a transform.
+  ///
+  /// Useful for a list of a type other than `value_type`. The transform is
+  /// held by reference. The initializer list must outlive this span.
+  ///
+  /// @param l The initializer list whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Element,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfTransformIsValid<Transform, const Element&>,
@@ -454,13 +494,15 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                         any_span_transform::Identity())
       : AnySpan(l.begin(), l.size(), transform) {}
 
-  // Creates a span that wraps an array. Applies the optional transform to
-  // elements before returning them.
-  //
-  // Transform must be a function object with a const operator() that takes
-  // Element as an argument and return a reference to T or compatible object.
-  //
-  // Both the transform and array must outlive this span.
+  /// Constructs a span wrapping a const array, applying a transform (by copy).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param ptr Pointer to the first element.
+  /// @param size Number of elements.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, typename Transform,
             typename = EnableIfTransformIsValid<Transform, const Element&>,
             EnableIfTransformIsByCopy<Transform> = true>
@@ -468,6 +510,15 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                         ABSL_ATTRIBUTE_LIFETIME_BOUND,
                     size_type size, const Transform& transform)
       : AnySpan(any_span_internal::MakeArrayGetter<T>(ptr, transform), size) {}
+  /// Constructs a span wrapping a const array, applying a transform (by ref).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param ptr Pointer to the first element.
+  /// @param size Number of elements.
+  /// @param transform Functor applied to each element on access.
   template <typename Element,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfTransformIsValid<Transform, const Element&>,
@@ -479,13 +530,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                         any_span_transform::Identity())
       : AnySpan(any_span_internal::MakeArrayGetter<T>(ptr, transform), size) {}
 
-  // Creates a span that wraps an array of fixed size. Applies the optional
-  // transform to elements before returning them.
-  //
-  // Transform must be a function object with a const operator() that takes
-  // Element as an argument and return a reference to T or compatible object.
-  //
-  // Both the transform and array must outlive this span.
+  /// Constructs a span wrapping a fixed-size const array (transform by copy).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param array The array whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, size_type N, typename Transform,
             typename = EnableIfTransformIsValid<Transform, const Element&>,
             EnableIfTransformIsByCopy<Transform> = true>
@@ -493,6 +545,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       const Element (&array ABSL_ATTRIBUTE_LIFETIME_BOUND)[N],
       const Transform& transform)
       : AnySpan(array, N, transform) {}
+  /// Constructs a span wrapping a fixed-size const array (transform by ref).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param array The array whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, size_type N,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfTransformIsValid<Transform, const Element&>,
@@ -503,20 +563,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
           any_span_transform::Identity())
       : AnySpan(array, N, transform) {}
 
-  // Creates a span that wraps a const container. Applies the optional transform
-  // to elements before returning them.
-  //
-  // This constructor is enabled even for mutable spans, since some
-  // container-like objects provide mutable element access even when the object
-  // itself is const (such as absl::Span)
-  //
-  // Transform must be a function object with a const operator() that takes the
-  // value type of Container as an argument and return a reference to T or
-  // compatible object.
-  //
-  // The transform, container, and the container's underlying storage must
-  // outlive this span. Any operation that may reallocate the container's
-  // storage or change its size will invalidate the span.
+  /// Constructs a span wrapping a const view container (transform by copy).
+  ///
+  /// Enabled even for mutable spans, since some views expose mutable element
+  /// access when const. The transform, container, and its storage must outlive
+  /// this span; reallocating or resizing the container invalidates the span.
+  ///
+  /// @param container The container whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Container, typename Transform,
             typename = EnableIfContainer<Container>,
             typename = EnableIfTransformIsValid<
@@ -528,6 +582,13 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       const Container& container, const Transform& transform)
       : AnySpan(any_span_internal::MakeContainerGetter<T>(container, transform),
                 container.size()) {}
+  /// Constructs a span wrapping a const non-view container (transform by copy).
+  ///
+  /// The transform, container, and its storage must outlive this span;
+  /// reallocating or resizing the container invalidates the span.
+  ///
+  /// @param container The container whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Container, typename Transform,
             typename = EnableIfContainer<Container>,
             typename = EnableIfTransformIsValid<
@@ -540,6 +601,13 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       const Transform& transform)
       : AnySpan(any_span_internal::MakeContainerGetter<T>(container, transform),
                 container.size()) {}
+  /// Constructs a span wrapping a const view container (transform by ref).
+  ///
+  /// The transform, container, and its storage must outlive this span;
+  /// reallocating or resizing the container invalidates the span.
+  ///
+  /// @param container The container whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <
       typename Container, typename Transform = any_span_transform::IdentityT,
       typename = EnableIfContainer<Container>,
@@ -554,6 +622,13 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
           any_span_transform::Identity())
       : AnySpan(any_span_internal::MakeContainerGetter<T>(container, transform),
                 container.size()) {}
+  /// Constructs a span wrapping a const non-view container (transform by ref).
+  ///
+  /// The transform, container, and its storage must outlive this span;
+  /// reallocating or resizing the container invalidates the span.
+  ///
+  /// @param container The container whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Container,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfContainer<Container>,
@@ -569,13 +644,15 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       : AnySpan(any_span_internal::MakeContainerGetter<T>(container, transform),
                 container.size()) {}
 
-  // Creates a span that wraps a mutable array. Applies the optional transform
-  // to elements before returning them.
-  //
-  // Transform must be a function object with a const operator() that takes
-  // Element as an argument and return a reference to T or compatible object.
-  //
-  // Both the transform and array must outlive this span.
+  /// Constructs a span wrapping a mutable array (transform by copy).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param ptr Pointer to the first element.
+  /// @param size Number of elements.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, typename Transform,
             typename = EnableIfMutable<Element>,
             typename = EnableIfTransformIsValid<Transform, Element&>,
@@ -583,6 +660,15 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
   constexpr AnySpan(Element* absl_nullable ptr ABSL_ATTRIBUTE_LIFETIME_BOUND,
                     size_type size, const Transform& transform)
       : AnySpan(any_span_internal::MakeArrayGetter<T>(ptr, transform), size) {}
+  /// Constructs a span wrapping a mutable array (transform by ref).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param ptr Pointer to the first element.
+  /// @param size Number of elements.
+  /// @param transform Functor applied to each element on access.
   template <typename Element,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfMutable<Element>,
@@ -594,13 +680,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                         any_span_transform::Identity())
       : AnySpan(any_span_internal::MakeArrayGetter<T>(ptr, transform), size) {}
 
-  // Creates a span that wraps a mutable array of fixed size. Applies the
-  // optional transform to elements before returning them.
-  //
-  // Transform must be a function object with a const operator() that takes
-  // Element as an argument and return a reference to T or compatible object.
-  //
-  // Both the transform and array must outlive this span.
+  /// Constructs a span wrapping a fixed-size mutable array (transform by copy).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param array The array whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, size_type N, typename Transform,
             typename = EnableIfMutable<Element>,
             typename = EnableIfTransformIsValid<Transform, Element&>,
@@ -609,6 +696,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       Element (&array ABSL_ATTRIBUTE_LIFETIME_BOUND)[N],
       const Transform& transform)
       : AnySpan(array, N, transform) {}
+  /// Constructs a span wrapping a fixed-size mutable array (transform by ref).
+  ///
+  /// The transform must be a function object whose const `operator()` takes an
+  /// `Element` and returns a reference to `T` or a compatible object. Both the
+  /// transform and array must outlive this span.
+  ///
+  /// @param array The array whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, size_type N,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfMutable<Element>,
@@ -620,16 +715,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
           any_span_transform::Identity())
       : AnySpan(array, N, transform) {}
 
-  // Creates a span that wraps a mutable container. Only enabled if T is
-  // mutable. Applies the optional transform to elements before returning them.
-  //
-  // Transform must be a function object with a const operator() that takes the
-  // value type of Container as an argument and return a reference to T or
-  // compatible object.
-  //
-  // The transform, container, and the container's underlying storage must
-  // outlive this span. Any operation that may reallocate the container's
-  // storage or change its size will invalidate the span.
+  /// Constructs a span wrapping a mutable container (transform by copy).
+  ///
+  /// Only enabled when `T` is mutable. The transform, container, and its
+  /// storage must outlive this span; reallocating or resizing the container
+  /// invalidates the span.
+  ///
+  /// @param container The container whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Container, typename Transform,
             typename = EnableIfMutable<Container>,
             typename = EnableIfContainer<Container>,
@@ -641,6 +734,14 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       const Transform& transform)
       : AnySpan(any_span_internal::MakeContainerGetter<T>(container, transform),
                 container.size()) {}
+  /// Constructs a span wrapping a mutable container (transform by ref).
+  ///
+  /// Only enabled when `T` is mutable. The transform, container, and its
+  /// storage must outlive this span; reallocating or resizing the container
+  /// invalidates the span.
+  ///
+  /// @param container The container whose elements the span refers to.
+  /// @param transform Functor applied to each element on access.
   template <typename Container,
             typename Transform = any_span_transform::IdentityT,
             typename = EnableIfMutable<Container>,
@@ -655,18 +756,19 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       : AnySpan(any_span_internal::MakeContainerGetter<T>(container, transform),
                 container.size()) {}
 
-  // Converts a mutable span to a const span by copying the internal state
-  // (rather than wrapping the other span).
-  // TODO(b/179783710): add ABSL_ATTRIBUTE_LIFETIME_BOUND.
+  /// Converts a mutable span to a const span by copying its internal state.
+  ///
+  /// @param other The mutable span to convert from.
   template <typename LazyT = T, typename = EnableIfConst<LazyT>>
   constexpr AnySpan(  // NOLINT(google-explicit-constructor)
       const AnySpan<std::remove_const_t<T>>& other)
       : getter_(other.getter_), size_(other.size()) {}
 
-  // Creates a span that wraps around another span of different type.
-  //
-  // This has performance and lifetime consequences, and can easily happen by
-  // mistake. We make such conversions explicit here.
+  /// Constructs a span wrapping another span of a different element type.
+  ///
+  /// Made explicit because it has performance and lifetime consequences.
+  ///
+  /// @param other The source span to wrap.
   template <typename Element, typename = EnableIfDifferentElementType<Element>,
             typename = EnableIfTransformIsValid<any_span_transform::IdentityT,
                                                 Element&>>
@@ -676,11 +778,12 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                     other, any_span_transform::Identity()),
                 other.size()) {}
 
-  // Creates a span that wraps around another span. Applies the non-optional
-  // transform to elements before returning them.
-  //
-  // This has lifetime consequences, and may happen by mistake. We make it
-  // explicit here.
+  /// Constructs a span wrapping another span, applying a transform (by copy).
+  ///
+  /// Made explicit because it has lifetime consequences.
+  ///
+  /// @param other The source span to wrap.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, typename Transform,
             typename = EnableIfTransformIsValid<Transform, Element&>,
             EnableIfTransformIsByCopy<Transform> = true>
@@ -689,6 +792,12 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
                              const Transform& transform)
       : AnySpan(any_span_internal::MakeContainerGetter<T>(other, transform),
                 other.size()) {}
+  /// Constructs a span wrapping another span, applying a transform (by ref).
+  ///
+  /// Made explicit because it has lifetime consequences.
+  ///
+  /// @param other The source span to wrap.
+  /// @param transform Functor applied to each element on access.
   template <typename Element, typename Transform,
             typename = EnableIfTransformIsValid<Transform, Element&>,
             EnableIfTransformIsByRef<Transform> = true>
@@ -698,11 +807,15 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
       : AnySpan(any_span_internal::MakeContainerGetter<T>(other, transform),
                 other.size()) {}
 
-  // Returns a subspan of this span. This span may become invalid before the
-  // subspan, but both the container and transform must remain valid.
-  // pos must be non-negative and <= size().
-  // len must be non-negative and <= size() - pos, or equal to npos.
-  // If len==npos, the subspan continues till the end of this span.
+  /// Returns a subspan starting at `pos` and spanning `len` elements.
+  ///
+  /// `pos` must be `<= size()`. `len` must be `<= size() - pos` or `npos`; when
+  /// `npos`, the subspan runs to the end. The container and transform must stay
+  /// valid, though this span may become invalid before the subspan.
+  ///
+  /// @param pos Index of the first element of the subspan.
+  /// @param len Number of elements in the subspan, or `npos` for the rest.
+  /// @return A span over the requested range.
   constexpr AnySpan subspan(size_type pos, size_type len = npos) const {
     const size_t this_size = size();
     if (len == AnySpan<T>::npos) {
@@ -714,56 +827,112 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
     return AnySpan<T>(getter_.Offset(pos), len);
   }
 
-  // Returns a `AnySpan` containing first `len` elements. Parameter `len` must
-  // be non-negative and <= size().
+  /// Returns a span containing the first `len` elements.
+  ///
+  /// `len` must be `<= size()`.
+  ///
+  /// @param len Number of elements from the front to include.
+  /// @return A span over the first `len` elements.
   constexpr AnySpan first(size_type len) const {
     absl::base_internal::HardeningAssert(len != npos);
     return subspan(0, len);
   }
 
-  // Returns a `AnySpan` containing last `len` elements. Parameter `len` must be
-  // non-negative and <= size().
+  /// Returns a span containing the last `len` elements.
+  ///
+  /// `len` must be `<= size()`.
+  ///
+  /// @param len Number of elements from the back to include.
+  /// @return A span over the last `len` elements.
   constexpr AnySpan last(size_type len) const { return subspan(size() - len); }
 
-  // Size operations.
+  /// Returns the number of elements in this span.
+  ///
+  /// @return The size of the span.
   constexpr size_type size() const { return size_; }
+  /// Reports whether this span is empty.
+  ///
+  /// @return `true` if the span contains no elements.
   constexpr bool empty() const { return size() == 0; }
 
-  // Element access.
+  /// Returns a reference to the element at `index`.
+  ///
+  /// @param index Index of the element to access.
+  /// @return A reference to the element at `index`.
   constexpr reference operator[](size_type index) const {
     absl::base_internal::HardeningAssertLT(index, size());
     return getter_.Get(index);
   }
+  /// Returns a reference to the element at `index`, with bounds checking.
+  ///
+  /// @param index Index of the element to access.
+  /// @return A reference to the element at `index`.
   constexpr reference at(size_type index) const {
     if (ABSL_PREDICT_FALSE(index >= size())) {
       absl::ThrowStdOutOfRange("AnySpan::at failed bounds check");
     }
     return getter_.Get(index);
   }
+  /// Returns a reference to the first element; the span must not be empty.
+  ///
+  /// @return A reference to the first element.
   constexpr reference front() const {
     absl::base_internal::HardeningAssertGT(size(), size_type{0});
     return (*this)[0];
   }
+  /// Returns a reference to the last element; the span must not be empty.
+  ///
+  /// @return A reference to the last element.
   constexpr reference back() const {
     absl::base_internal::HardeningAssertGT(size(), size_type{0});
     return (*this)[size() - 1];
   }
 
-  // Iterator accessors.
+  /// Returns an iterator to the first element.
+  ///
+  /// @return An iterator to the first element, or `end()` if empty.
   constexpr iterator begin() const { return iterator(this, 0); }
+  /// Returns an iterator just past the last element.
+  ///
+  /// @return A past-the-end iterator.
   constexpr iterator end() const { return iterator(this, size_); }
+  /// Returns a reverse iterator to the last element.
+  ///
+  /// @return A reverse iterator to the last element, or `rend()` if empty.
   constexpr reverse_iterator rbegin() const { return reverse_iterator(end()); }
+  /// Returns a reverse iterator just before the first element.
+  ///
+  /// @return A reverse past-the-end iterator.
   constexpr reverse_iterator rend() const { return reverse_iterator(begin()); }
+  /// Returns a const iterator to the first element.
+  ///
+  /// @return A const iterator to the first element, or `cend()` if empty.
   constexpr const_iterator cbegin() const { return const_iterator(this, 0); }
+  /// Returns a const iterator just past the last element.
+  ///
+  /// @return A past-the-end const iterator.
   constexpr const_iterator cend() const { return const_iterator(this, size_); }
+  /// Returns a const reverse iterator to the last element.
+  ///
+  /// @return A const reverse iterator to the last element, or `crend()`.
   constexpr const_reverse_iterator crbegin() const { return rbegin(); }
+  /// Returns a const reverse iterator just before the first element.
+  ///
+  /// @return A const reverse past-the-end iterator.
   constexpr const_reverse_iterator crend() const { return rend(); }
 
-  // Constructs from a getter and size. Not for external use.
+  /// Constructs a span from an element getter and size. Not for external use.
+  ///
+  /// @param getter The internal element accessor.
+  /// @param size The number of elements.
   AnySpan(any_span_internal::Getter<T> getter, size_type size)
       : getter_(getter), size_(size) {}
 
-  // Support for absl::Hash.
+  /// Hashes the span's elements for use with `absl::Hash`.
+  ///
+  /// @param state The hash state to combine into.
+  /// @param any_span The span whose elements are hashed.
+  /// @return The updated hash state.
   template <typename H>
   friend constexpr H AbslHashValue(H state, AnySpan any_span) {
     for (const auto& v : any_span) {
@@ -793,20 +962,38 @@ class ABSL_ATTRIBUTE_VIEW AnySpan {
   // quite subtle and confusing, but they're necessary on some toolchains to
   // allow all mutable/const combinations with this & other range types while
   // avoiding symbol collisions or ODR violations.
+  /// Compares two const spans for element-wise equality.
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if the spans have equal elements.
   friend bool operator==(AnySpan<const T> a, AnySpan<const T> b);
+  /// Compares two const spans for inequality.
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if the spans differ.
   friend bool operator!=(AnySpan<const T> a, AnySpan<const T> b);
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
 
-  // operator==
+  /// Compares two spans for element-wise equality.
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if the spans have equal elements.
   friend bool operator==(AnySpan a, AnySpan b) {
     return any_span_internal::EqualImpl<const T>(a, b);
   }
+  /// Compares two spans for inequality.
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if the spans differ.
   friend bool operator!=(AnySpan a, AnySpan b) { return !(a == b); }
 };
 
-// Constructs an AnySpan from a container or array.
+/// Constructs an `AnySpan` from a view container or array.
+///
+/// @param c The container whose elements the span refers to.
+/// @return An `AnySpan` over the elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::ElementType<Container>>
 std::enable_if_t<
@@ -815,6 +1002,10 @@ std::enable_if_t<
 MakeAnySpan(Container& c) {
   return AnySpan<T>(c);
 }
+/// Constructs an `AnySpan` from a non-view container or array.
+///
+/// @param c The container whose elements the span refers to.
+/// @return An `AnySpan` over the elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::ElementType<Container>>
 std::enable_if_t<
@@ -824,7 +1015,10 @@ MakeAnySpan(Container& c ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return AnySpan<T>(c);
 }
 
-// Constructs an AnySpan that dereferences a container or array of pointers.
+/// Constructs an `AnySpan` that dereferences a view container of pointers.
+///
+/// @param c The container of pointers whose pointees the span refers to.
+/// @return An `AnySpan` over the dereferenced elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::DerefElementType<Container>>
 std::enable_if_t<
@@ -833,6 +1027,10 @@ std::enable_if_t<
 MakeDerefAnySpan(Container& c) {
   return AnySpan<T>(c, any_span_transform::Deref());
 }
+/// Constructs an `AnySpan` that dereferences a non-view container of pointers.
+///
+/// @param c The container of pointers whose pointees the span refers to.
+/// @return An `AnySpan` over the dereferenced elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::DerefElementType<Container>>
 std::enable_if_t<
@@ -842,14 +1040,21 @@ MakeDerefAnySpan(Container& c ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return AnySpan<T>(c, any_span_transform::Deref());
 }
 
-// Constructs an AnySpan from a pointer and size.
+/// Constructs an `AnySpan` from a pointer and a size.
+///
+/// @param ptr Pointer to the first element.
+/// @param size Number of elements.
+/// @return An `AnySpan` over `size` elements starting at `ptr`.
 template <int&... ExplicitArgumentBarrier, typename T>
 AnySpan<T> MakeAnySpan(T* absl_nullable ptr ABSL_ATTRIBUTE_LIFETIME_BOUND,
                        std::size_t size) {
   return AnySpan<T>(ptr, size);
 }
 
-// Constructs a const AnySpan from a container or array.
+/// Constructs a const `AnySpan` from a view container or array.
+///
+/// @param c The container whose elements the span refers to.
+/// @return A read-only `AnySpan` over the elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::ElementType<const Container>>
 std::enable_if_t<absl::type_traits_internal::IsView<Container>::value,
@@ -857,6 +1062,10 @@ std::enable_if_t<absl::type_traits_internal::IsView<Container>::value,
 MakeConstAnySpan(const Container& c) {
   return AnySpan<const T>(c);
 }
+/// Constructs a const `AnySpan` from a non-view container or array.
+///
+/// @param c The container whose elements the span refers to.
+/// @return A read-only `AnySpan` over the elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::ElementType<const Container>>
 std::enable_if_t<!absl::type_traits_internal::IsView<Container>::value,
@@ -865,8 +1074,10 @@ MakeConstAnySpan(const Container& c ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return AnySpan<const T>(c);
 }
 
-// Constructs a const AnySpan that dereferences a container or array of
-// pointers.
+/// Constructs a const `AnySpan` dereferencing a view container of pointers.
+///
+/// @param c The container of pointers whose pointees the span refers to.
+/// @return A read-only `AnySpan` over the dereferenced elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::DerefElementType<const Container>>
 std::enable_if_t<absl::type_traits_internal::IsView<Container>::value,
@@ -874,6 +1085,10 @@ std::enable_if_t<absl::type_traits_internal::IsView<Container>::value,
 MakeConstDerefAnySpan(const Container& c) {
   return AnySpan<const T>(c, any_span_transform::Deref());
 }
+/// Constructs a const `AnySpan` dereferencing a non-view container of pointers.
+///
+/// @param c The container of pointers whose pointees the span refers to.
+/// @return A read-only `AnySpan` over the dereferenced elements of `c`.
 template <int&... ExplicitArgumentBarrier, typename Container,
           typename T = any_span_internal::DerefElementType<const Container>>
 std::enable_if_t<!absl::type_traits_internal::IsView<Container>::value,
@@ -882,7 +1097,11 @@ MakeConstDerefAnySpan(const Container& c ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return AnySpan<const T>(c, any_span_transform::Deref());
 }
 
-// Constructs an AnySpan from a pointer and size.
+/// Constructs a const `AnySpan` from a pointer and a size.
+///
+/// @param ptr Pointer to the first element.
+/// @param size Number of elements.
+/// @return A read-only `AnySpan` over `size` elements starting at `ptr`.
 template <int&... ExplicitArgumentBarrier, typename T>
 AnySpan<const T> MakeConstAnySpan(const T* absl_nullable ptr,
                                   std::size_t size) {
@@ -904,100 +1123,189 @@ class ABSL_ATTRIBUTE_VIEW AnySpan<T>::IteratorBase {
   Iter& self() { return static_cast<Iter&>(*this); }
 
  public:
+  /// The iterator category (random access).
   using iterator_category = std::random_access_iterator_tag;
+  /// The element type with const removed.
   using value_type = std::remove_const_t<Value>;
+  /// A signed type used for iterator differences.
   using difference_type = std::ptrdiff_t;
+  /// A reference to an element.
   using reference = Value&;
+  /// A pointer to an element.
   using pointer = Value*;
 
-  // Constructs an invalid iterator.
+  /// Constructs an invalid iterator.
   IteratorBase() = default;
 
+  /// Dereferences the iterator.
+  ///
+  /// @return A reference to the current element.
   reference operator*() const { return (*container_)[index_]; }
 
+  /// Accesses members of the current element.
+  ///
+  /// @return A pointer to the current element.
   pointer absl_nonnull operator->() const { return &(*container_)[index_]; }
 
+  /// Accesses the element `i` positions from the current one.
+  ///
+  /// @param i Offset from the current position.
+  /// @return A reference to the element at the offset position.
   reference operator[](difference_type i) const {
     return (*container_)[index_ + i];
   }
 
+  /// Advances the iterator by `d` positions.
+  ///
+  /// @param d Number of positions to advance.
+  /// @return A reference to this iterator.
   Iter& operator+=(difference_type d) {
     index_ += d;
     return self();
   }
 
+  /// Moves the iterator back by `d` positions.
+  ///
+  /// @param d Number of positions to move back.
+  /// @return A reference to this iterator.
   Iter& operator-=(difference_type d) { return self() += -d; }
 
+  /// Advances the iterator by one position.
+  ///
+  /// @return A reference to this iterator.
   Iter& operator++() {
     self() += 1;
     return self();
   }
 
-  Iter operator++(int) {
+  /// Advances the iterator by one position.
+  ///
+  /// @param unused Unused tag distinguishing the postfix form.
+  /// @return A copy of the iterator before advancing.
+  Iter operator++(int unused) {
     Iter copy(self());
     ++self();
     return copy;
   }
 
+  /// Moves the iterator back by one position.
+  ///
+  /// @return A reference to this iterator.
   Iter& operator--() {
     self() -= 1;
     return self();
   }
 
-  Iter operator--(int) {
+  /// Moves the iterator back by one position.
+  ///
+  /// @param unused Unused tag distinguishing the postfix form.
+  /// @return A copy of the iterator before moving back.
+  Iter operator--(int unused) {
     Iter copy(self());
     --self();
     return copy;
   }
 
+  /// Returns an iterator advanced by `d` positions.
+  ///
+  /// @param d Number of positions to advance.
+  /// @return The advanced iterator.
   Iter operator+(difference_type d) const {
     Iter tmp = self();
     tmp += d;
     return tmp;
   }
 
+  /// Returns an iterator advanced by `d` positions.
+  ///
+  /// @param d Number of positions to advance.
+  /// @param i The iterator to advance.
+  /// @return The advanced iterator.
   friend Iter operator+(difference_type d, Iter i) { return i + d; }
 
+  /// Returns an iterator moved back by `d` positions.
+  ///
+  /// @param d Number of positions to move back.
+  /// @return The moved iterator.
   Iter operator-(difference_type d) const { return self() + (-d); }
 
+  /// Returns the distance to another iterator.
+  ///
+  /// @param other The iterator to measure against.
+  /// @return The number of positions from `other` to this iterator.
   difference_type operator-(const Iter& other) const {
     return index_ - other.index_;
   }
 
+  /// Tests whether two iterators refer to the same position.
+  ///
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if `a` and `b` point to the same position.
   friend bool operator==(const Iter& a, const Iter& b) {
     return a.index_ == b.index_;
   }
 
+  /// Tests whether two iterators refer to different positions.
+  ///
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if `a` and `b` point to different positions.
   friend bool operator!=(const Iter& a, const Iter& b) {
     return a.index_ != b.index_;
   }
 
+  /// Orders two iterators by position.
+  ///
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if `a` precedes `b`.
   friend bool operator<(const Iter& a, const Iter& b) {
     return a.index_ < b.index_;
   }
 
+  /// Orders two iterators by position.
+  ///
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if `a` does not follow `b`.
   friend bool operator<=(const Iter& a, const Iter& b) {
     return a.index_ <= b.index_;
   }
 
+  /// Orders two iterators by position.
+  ///
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if `a` follows `b`.
   friend bool operator>(const Iter& a, const Iter& b) {
     return a.index_ > b.index_;
   }
 
+  /// Orders two iterators by position.
+  ///
+  /// @param a The left operand.
+  /// @param b The right operand.
+  /// @return `true` if `a` does not precede `b`.
   friend bool operator>=(const Iter& a, const Iter& b) {
     return a.index_ >= b.index_;
   }
 
  protected:
-  // Constructs an iterator that points to the given index of the given span.
+  /// Constructs an iterator at the given index of the given span.
+  ///
+  /// @param container The span the iterator points into.
+  /// @param index The element index the iterator points to.
   IteratorBase(const AnySpan* absl_nullable container, size_type index)
       : container_(container), index_(index) {}
 
+  /// The span this iterator points into.
   const AnySpan* absl_nullable container_ = nullptr;
+  /// The current element index.
   size_type index_ = 0;
 };
 
-// iterator implementation. This mostly just forwards to IteratorBase.
+/// Random-access iterator over the elements of an `AnySpan`.
 template <typename T>
 class ABSL_ATTRIBUTE_VIEW AnySpan<T>::iterator
     : public IteratorBase<iterator, T> {
@@ -1011,6 +1319,7 @@ class ABSL_ATTRIBUTE_VIEW AnySpan<T>::iterator
   using typename Base::reference;
   using typename Base::value_type;
 
+  /// Constructs an invalid iterator.
   iterator() = default;
 
  private:
@@ -1021,8 +1330,9 @@ class ABSL_ATTRIBUTE_VIEW AnySpan<T>::iterator
       : Base(container, index) {}
 };
 
-// const_iterator implementation. This mostly just forwards to IteratorBase,
-// but also provides conversion from MutableIterator.
+/// Random-access iterator over the const elements of an `AnySpan`.
+///
+/// Also supports implicit conversion from a mutable `iterator`.
 template <typename T>
 class AnySpan<T>::const_iterator
     : public IteratorBase<const_iterator, std::add_const_t<T>> {
@@ -1036,9 +1346,12 @@ class AnySpan<T>::const_iterator
   using typename Base::reference;
   using typename Base::value_type;
 
+  /// Constructs an invalid iterator.
   const_iterator() = default;
 
-  // Support conversion from mutable iterators.
+  /// Converts a mutable iterator to a const iterator.
+  ///
+  /// @param other The mutable iterator to convert from.
   // NOLINTNEXTLINE(google-explicit-constructor)
   const_iterator(const iterator& other)  // NOLINT(runtime/explicit)
       : Base(other.container_, other.index_) {}

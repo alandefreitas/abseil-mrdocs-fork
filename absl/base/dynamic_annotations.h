@@ -451,14 +451,21 @@ ABSL_NAMESPACE_END
 #ifdef __cplusplus
 namespace absl {
 #ifdef ABSL_HAVE_HWADDRESS_SANITIZER
-// Under HWASAN changes the tag of the pointer.
+/// Changes the HWASAN tag of `ptr` to `tag`.
+/// @param ptr The pointer whose tag is changed.
+/// @param tag The new HWASAN tag to apply.
+/// @return `ptr`, re-tagged with `tag`.
 template <typename T>
 T* HwasanTagPointer(T* ptr, uintptr_t tag) {
   return reinterpret_cast<T*>(__hwasan_tag_pointer(ptr, tag));
 }
 #else
+/// No-op fallback used when HWASAN is not available.
+/// @param ptr The pointer to return unchanged.
+/// @param tag The HWASAN tag (ignored by this fallback).
+/// @return `ptr`, unmodified.
 template <typename T>
-T* HwasanTagPointer(T* ptr, uintptr_t) {
+T* HwasanTagPointer(T* ptr, uintptr_t tag) {
   return ptr;
 }
 #endif

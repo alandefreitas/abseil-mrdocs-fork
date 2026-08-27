@@ -31,29 +31,29 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// Now()
-//
-// Returns the current time, expressed as an `absl::Time` absolute time value.
-//
-// To improve testability, consider injecting an absl::Clock and using
-// absl::Clock::TimeNow() instead.
+/// Returns the current time, expressed as an `absl::Time` absolute time value.
+///
+/// To improve testability, consider injecting an absl::Clock and using
+/// absl::Clock::TimeNow() instead.
+///
+/// @return The current time as an `absl::Time` value.
 absl::Time Now();
 
-// GetCurrentTimeNanos()
-//
-// Returns the current time, expressed as a count of nanoseconds since the Unix
-// Epoch (https://en.wikipedia.org/wiki/Unix_time). Prefer `absl::Now()` instead
-// for all but the most performance-sensitive cases (i.e. when you are calling
-// this function hundreds of thousands of times per second).
+/// Returns the current time, expressed as a count of nanoseconds since the Unix
+/// Epoch (https://en.wikipedia.org/wiki/Unix_time). Prefer `absl::Now()` instead
+/// for all but the most performance-sensitive cases (i.e. when you are calling
+/// this function hundreds of thousands of times per second).
+///
+/// @return The current time as nanoseconds since the Unix Epoch.
 int64_t GetCurrentTimeNanos();
 
-// SleepFor()
-//
-// Sleeps for the specified duration, expressed as an `absl::Duration`.
-//
-// Notes:
-// * Signal interruptions will not reduce the sleep duration.
-// * Returns immediately when passed a nonpositive duration.
+/// Sleeps for the specified duration, expressed as an `absl::Duration`.
+///
+/// Notes:
+/// * Signal interruptions will not reduce the sleep duration.
+/// * Returns immediately when passed a nonpositive duration.
+///
+/// @param duration The length of time to sleep.
 void SleepFor(absl::Duration duration);
 
 ABSL_NAMESPACE_END

@@ -39,29 +39,27 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// -----------------------------------------------------------------------------
-// absl::BitGenRef
-// -----------------------------------------------------------------------------
-//
-// `absl::BitGenRef` is a type-erasing class that provides a generator-agnostic
-// non-owning "reference" interface for use in place of any specific uniform
-// random bit generator (URBG). This class may be used for both Abseil
-// (e.g. `absl::BitGen`, `absl::InsecureBitGen`) and Standard library (e.g
-// `std::mt19937`, `std::minstd_rand`) bit generators.
-//
-// Like other reference classes, `absl::BitGenRef` does not own the
-// underlying bit generator, and the underlying instance must outlive the
-// `absl::BitGenRef`.
-//
-// `absl::BitGenRef` is particularly useful when used with an
-// `absl::MockingBitGen` to test specific paths in functions which use random
-// values.
-//
-// Example:
-//    void TakesBitGenRef(absl::BitGenRef gen) {
-//      int x = absl::Uniform<int>(gen, 0, 1000);
-//    }
-//
+/// A type-erasing, non-owning reference to any uniform random bit generator.
+///
+/// `absl::BitGenRef` provides a generator-agnostic non-owning "reference"
+/// interface for use in place of any specific uniform random bit generator
+/// (URBG). This class may be used for both Abseil (e.g. `absl::BitGen`,
+/// `absl::InsecureBitGen`) and Standard library (e.g `std::mt19937`,
+/// `std::minstd_rand`) bit generators.
+///
+/// Like other reference classes, `absl::BitGenRef` does not own the
+/// underlying bit generator, and the underlying instance must outlive the
+/// `absl::BitGenRef`.
+///
+/// `absl::BitGenRef` is particularly useful when used with an
+/// `absl::MockingBitGen` to test specific paths in functions which use random
+/// values.
+///
+/// Example:
+///    void TakesBitGenRef(absl::BitGenRef gen) {
+///      int x = absl::Uniform<int>(gen, 0, 1000);
+///    }
+///
 class BitGenRef {
   template <template <class...> class Trait, class AlwaysVoid, class... Args>
   struct detector : std::false_type {};
@@ -77,11 +75,27 @@ class BitGenRef {
   using HasConversionOperator = detector<has_conversion_operator_t, void, T>;
 
  public:
-  BitGenRef(const BitGenRef&) = default;
-  BitGenRef(BitGenRef&&) = default;
-  BitGenRef& operator=(const BitGenRef&) = default;
-  BitGenRef& operator=(BitGenRef&&) = default;
+  /// Copy constructor.
+  /// @param other The source object.
+  BitGenRef(const BitGenRef& other) = default;
+  /// Move constructor.
+  /// @param other The source object.
+  BitGenRef(BitGenRef&& other) = default;
+  /// Copy assignment operator.
+  ///
+  /// @param other The source object.
+  /// @return A reference to this object.
+  BitGenRef& operator=(const BitGenRef& other) = default;
+  /// Move assignment operator.
+  ///
+  /// @param other The source object.
+  /// @return A reference to this object.
+  BitGenRef& operator=(BitGenRef&& other) = default;
 
+  /// Constructs a reference to the given bit generator.
+  ///
+  /// @param gen The underlying bit generator to reference. It must outlive
+  /// this reference.
   template <typename URBGRef, typename URBG = absl::remove_cvref_t<URBGRef>,
             typename std::enable_if_t<
                 (!std::is_same_v<URBG, BitGenRef> &&
@@ -94,6 +108,10 @@ class BitGenRef {
         mock_call_(NotAMock),
         generate_impl_fn_(ImplFn<URBG>) {}
 
+  /// Constructs a reference to the given mockable bit generator.
+  ///
+  /// @param gen The underlying bit generator to reference. It must outlive
+  /// this reference.
   template <typename URBGRef, typename URBG = absl::remove_cvref_t<URBGRef>,
             typename std::enable_if_t<
                 (!std::is_same_v<URBG, BitGenRef> &&
@@ -106,16 +124,26 @@ class BitGenRef {
         mock_call_(MockCall<URBG>),
         generate_impl_fn_(ImplFn<URBG>) {}
 
+  /// The type of the values produced by the referenced bit generator.
   using result_type = uint64_t;
 
+  /// Returns the smallest possible value from this bit generator.
+  ///
+  /// @return The smallest value that `operator()` can return.
   static constexpr result_type(min)() {
     return (std::numeric_limits<result_type>::min)();
   }
 
+  /// Returns the largest possible value from this bit generator.
+  ///
+  /// @return The largest value that `operator()` can return.
   static constexpr result_type(max)() {
     return (std::numeric_limits<result_type>::max)();
   }
 
+  /// Invokes the referenced bit generator, returning a generated value.
+  ///
+  /// @return A generated random value.
   result_type operator()() { return generate_impl_fn_(t_erased_gen_ptr_); }
 
  private:

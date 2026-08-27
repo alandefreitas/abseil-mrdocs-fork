@@ -41,7 +41,10 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// A sink that receives log messages produced when a status is logged.
 class LogSink;
+
+/// Builds an `absl::Status` enriched with extra context, logging, and payloads.
 class StatusBuilder;
 
 namespace status_internal {
@@ -96,210 +99,428 @@ class StatusBuilderPrivateAccessor;
 
 }  // namespace status_internal
 
-// Internal argument-dependent lookup extension point for StatusBuilder.
-// Necessary for allowing StatusBuilder to be open-sourced into Abseil without
-// introducing hard dependencies on non-canonical error spaces or protobuf.
-//
-// What we would have preferred here is to just leave
-// StatusBuilder::SetErrorCode() undeclared for OSS users, but defined for
-// internal users. However, C++ doesn't provide a great way to do that directly,
-// since merely omitting a definition still leaves it declared and thus
-// accessible.
-//
-// We therefore use this ADL extension point as the closest moral equivalent:
-// this allows use to define a simple shell for the method in OSS, but to
-// prevent its actual usage (via SFINAE) unless this extension point is also
-// defined, which is only the case in our internal libraries.
-void AbslInternalSetErrorCode(StatusBuilder&, absl::StatusCode);
+/// Argument-dependent lookup extension point that sets a `StatusBuilder`'s error code.
+///
+/// This is the extension point behind `StatusBuilder::SetErrorCode()`. It lets
+/// `StatusBuilder` be open-sourced into Abseil without introducing hard
+/// dependencies on non-canonical error spaces or protobuf. A simple shell is
+/// defined here, while SFINAE prevents actual usage unless this extension point
+/// is also defined, which is only the case in internal libraries.
+/// @param builder The `StatusBuilder` to modify.
+/// @param code The error code to set.
+void AbslInternalSetErrorCode(StatusBuilder& builder, absl::StatusCode code);
 
-// Specifies how to join the error message in the original status and any
-// additional message that has been streamed into the builder.
+/// Specifies how to join the error message in the original status and any
+/// additional message that has been streamed into the builder.
 enum class MessageJoinStyle {
+  /// Join as if by `util::Annotate`, with a convenience separator between the
+  /// original message and the additional one.
   kAnnotate,
+  /// Append the additional message to the original message with no separator.
   kAppend,
+  /// Prepend the additional message to the original message with no separator.
   kPrepend,
 };
 
-// Creates a status based on an original_status, but enriched with additional
-// information.  The builder implicitly converts to Status and StatusOr<T>
-// allowing for it to be returned directly.
-//
-//   StatusBuilder builder(original);
-//   builder.SetPayload(proto);
-//   builder << "info about error";
-//   return builder;
-//
-// It provides method chaining to simplify typical usage:
-//
-//   return StatusBuilder(original)
-//       .Log(absl::LogSeverity::kWarning) << "oh no!";
-//
-// In more detail:
-// - When the original status is OK, all methods become no-ops and nothing will
-//   be logged.
-// - Messages streamed into the status builder are collected into a single
-//   additional message string.
-// - The original Status's message and the additional message are joined
-//   together when the result status is built.
-// - By default, the messages will be joined as if by `util::Annotate`, which
-//   includes a convenience separator between the original message and the
-//   additional one.  This behavior can be changed with the `SetAppend()` and
-//   `SetPrepend()` methods of the builder.
-// - By default, the result status is not logged.  The `Log` and
-//   `EmitStackTrace` methods will cause the builder to log the result status
-//   when it is built.
-// - All side effects (like logging or constructing a stack trace) happen when
-//   the builder is converted to a status.
+/// Creates a status based on an original status, but enriched with additional
+/// information.
+///
+/// The builder implicitly converts to `Status` and `StatusOr<T>`, allowing it
+/// to be returned directly.
+///
+///     StatusBuilder builder(original);
+///     builder.SetPayload(proto);
+///     builder << "info about error";
+///     return builder;
+///
+/// It provides method chaining to simplify typical usage:
+///
+///     return StatusBuilder(original)
+///         .Log(absl::LogSeverity::kWarning) << "oh no!";
+///
+/// In more detail:
+/// - When the original status is OK, all methods become no-ops and nothing will
+///   be logged.
+/// - Messages streamed into the status builder are collected into a single
+///   additional message string.
+/// - The original Status's message and the additional message are joined
+///   together when the result status is built.
+/// - By default, the messages will be joined as if by `util::Annotate`, which
+///   includes a convenience separator between the original message and the
+///   additional one.  This behavior can be changed with the `SetAppend()` and
+///   `SetPrepend()` methods of the builder.
+/// - By default, the result status is not logged.  The `Log` and
+///   `EmitStackTrace` methods will cause the builder to log the result status
+///   when it is built.
+/// - All side effects (like logging or constructing a stack trace) happen when
+///   the builder is converted to a status.
 class ABSL_MUST_USE_RESULT StatusBuilder {
  public:
+  /// Creates an empty builder that produces an OK status.
   explicit StatusBuilder();
+
+  /// Destroys the builder.
   ~StatusBuilder();
 
-  // Creates a `StatusBuilder` based on an original status.  If logging is
-  // enabled, it will use `location` as the location from which the log message
-  // occurs.  A typical user will not specify `location`, allowing it to default
-  // to the current location.
+  /// Creates a `StatusBuilder` based on an original status.
+  ///
+  /// If logging is enabled, it will use `location` as the location from which
+  /// the log message occurs.  A typical user will not specify `location`,
+  /// allowing it to default to the current location.
+  ///
+  /// @param original_status The status the result will be based on.
+  /// @param location The source location associated with the builder.
   explicit StatusBuilder(
       const absl::Status& original_status,
       absl::SourceLocation location = absl::SourceLocation::current());
+
+  /// Creates a `StatusBuilder` based on an original status.
+  ///
+  /// If logging is enabled, it will use `location` as the location from which
+  /// the log message occurs.  A typical user will not specify `location`,
+  /// allowing it to default to the current location.
+  ///
+  /// @param original_status The status the result will be based on.
+  /// @param location The source location associated with the builder.
   explicit StatusBuilder(
       absl::Status&& original_status,
       absl::SourceLocation location = absl::SourceLocation::current());
 
-  // Creates a `StatusBuilder` from a status code.  If logging is enabled, it
-  // will use `location` as the location from which the log message occurs.  A
-  // typical user will not specify `location`, allowing it to default to the
-  // current location.
+  /// Creates a `StatusBuilder` from a status code.
+  ///
+  /// If logging is enabled, it will use `location` as the location from which
+  /// the log message occurs.  A typical user will not specify `location`,
+  /// allowing it to default to the current location.
+  ///
+  /// @param code The status code the result will be based on.
+  /// @param location The source location associated with the builder.
   explicit StatusBuilder(
       absl::StatusCode code,
       absl::SourceLocation location = absl::SourceLocation::current());
 
+  /// Creates a copy of `sb`.
+  ///
+  /// @param sb The builder to copy.
   StatusBuilder(const StatusBuilder& sb);
-  StatusBuilder& operator=(const StatusBuilder& sb);
-  StatusBuilder(StatusBuilder&&) = default;
-  StatusBuilder& operator=(StatusBuilder&&) = default;
 
-  // Mutates the builder so that the final additional message is prepended to
-  // the original error message in the status.  A convenience separator is not
-  // placed between the messages.
-  //
-  // NOTE: Multiple calls to `SetPrepend` and `SetAppend` just adjust the
-  // behavior of the final join of the original status with the extra message.
-  //
-  // Returns `*this` to allow method chaining.
+  /// Assigns a copy of `sb` to this builder.
+  ///
+  /// @param sb The builder to copy.
+  /// @return `*this`.
+  StatusBuilder& operator=(const StatusBuilder& sb);
+
+  /// Move constructor.
+  /// @param other The source object.
+  StatusBuilder(StatusBuilder&& other) = default;
+
+  /// Move assignment operator.
+  ///
+  /// @param other The source object.
+  /// @return `*this`.
+  StatusBuilder& operator=(StatusBuilder&& other) = default;
+
+  /// Mutates the builder so that the final additional message is prepended to
+  /// the original error message in the status.
+  ///
+  /// A convenience separator is not placed between the messages.
+  ///
+  /// NOTE: Multiple calls to `SetPrepend` and `SetAppend` just adjust the
+  /// behavior of the final join of the original status with the extra message.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& SetPrepend() &;
+
+  /// Mutates the builder so that the final additional message is prepended to
+  /// the original error message in the status.
+  ///
+  /// A convenience separator is not placed between the messages.
+  ///
+  /// NOTE: Multiple calls to `SetPrepend` and `SetAppend` just adjust the
+  /// behavior of the final join of the original status with the extra message.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& SetPrepend() &&;
 
-  // Mutates the builder so that the final additional message is appended to the
-  // original error message in the status.  A convenience separator is not
-  // placed between the messages.
-  //
-  // NOTE: Multiple calls to `SetPrepend` and `SetAppend` just adjust the
-  // behavior of the final join of the original status with the extra message.
-  //
-  // Returns `*this` to allow method chaining.
+  /// Mutates the builder so that the final additional message is appended to the
+  /// original error message in the status.
+  ///
+  /// A convenience separator is not placed between the messages.
+  ///
+  /// NOTE: Multiple calls to `SetPrepend` and `SetAppend` just adjust the
+  /// behavior of the final join of the original status with the extra message.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& SetAppend() &;
+
+  /// Mutates the builder so that the final additional message is appended to the
+  /// original error message in the status.
+  ///
+  /// A convenience separator is not placed between the messages.
+  ///
+  /// NOTE: Multiple calls to `SetPrepend` and `SetAppend` just adjust the
+  /// behavior of the final join of the original status with the extra message.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& SetAppend() &&;
 
-  // Mutates the builder to disable any logging that was set using any of the
-  // logging functions below.  Returns `*this` to allow method chaining.
+  /// Mutates the builder to disable any logging that was set using any of the
+  /// logging functions below.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& SetNoLogging() &;
+
+  /// Mutates the builder to disable any logging that was set using any of the
+  /// logging functions below.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& SetNoLogging() &&;
 
-  // Mutates the builder so that the result status will be logged (without a
-  // stack trace) when this builder is converted to a Status.  This overrides
-  // the logging settings from earlier calls to any of the logging mutator
-  // functions.  Returns `*this` to allow method chaining.
+  /// Mutates the builder so that the result status will be logged (without a
+  /// stack trace) when this builder is converted to a Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.
+  ///
+  /// @param level The severity level at which to log the result status.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& Log(absl::LogSeverity level) &;
+
+  /// Mutates the builder so that the result status will be logged (without a
+  /// stack trace) when this builder is converted to a Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.
+  ///
+  /// @param level The severity level at which to log the result status.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& Log(absl::LogSeverity level) &&;
 
+  /// Logs the result status at severity `kError`.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& LogError() & { return Log(absl::LogSeverity::kError); }
+
+  /// Logs the result status at severity `kError`.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& LogError() && {
     return std::move(LogError());
   }
+
+  /// Logs the result status at severity `kWarning`.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& LogWarning() & { return Log(absl::LogSeverity::kWarning); }
+
+  /// Logs the result status at severity `kWarning`.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& LogWarning() && {
     return std::move(LogWarning());
   }
+
+  /// Logs the result status at severity `kInfo`.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& LogInfo() & { return Log(absl::LogSeverity::kInfo); }
+
+  /// Logs the result status at severity `kInfo`.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& LogInfo() && {
     return std::move(LogInfo());
   }
 
-  // Mutates the builder so that the result status will be logged every N
-  // invocations (without a stack trace) when this builder is converted to a
-  // Status.  This overrides the logging settings from earlier calls to any of
-  // the logging mutator functions.  Returns `*this` to allow method chaining.
+  /// Mutates the builder so that the result status will be logged every N
+  /// invocations (without a stack trace) when this builder is converted to a
+  /// Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.
+  ///
+  /// @param level The severity level at which to log the result status.
+  /// @param n Log only once per `n` invocations.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& LogEveryN(absl::LogSeverity level, int n) &;
+
+  /// Mutates the builder so that the result status will be logged every N
+  /// invocations (without a stack trace) when this builder is converted to a
+  /// Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.
+  ///
+  /// @param level The severity level at which to log the result status.
+  /// @param n Log only once per `n` invocations.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& LogEveryN(absl::LogSeverity level,
                                                  int n) &&;
 
-  // Mutates the builder so that the result status will be logged once per
-  // period (without a stack trace) when this builder is converted to a Status.
-  // This overrides the logging settings from earlier calls to any of the
-  // logging mutator functions.  Returns `*this` to allow method chaining.
-  // If period is absl::ZeroDuration() or less, then this is equivalent to
-  // calling the Log() method.
+  /// Mutates the builder so that the result status will be logged once per
+  /// period (without a stack trace) when this builder is converted to a Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.  If period is `absl::ZeroDuration()` or less,
+  /// then this is equivalent to calling the `Log()` method.
+  ///
+  /// @param level The severity level at which to log the result status.
+  /// @param period The minimum period between logged invocations.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& LogEvery(absl::LogSeverity level, absl::Duration period) &;
+
+  /// Mutates the builder so that the result status will be logged once per
+  /// period (without a stack trace) when this builder is converted to a Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.  If period is `absl::ZeroDuration()` or less,
+  /// then this is equivalent to calling the `Log()` method.
+  ///
+  /// @param level The severity level at which to log the result status.
+  /// @param period The minimum period between logged invocations.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& LogEvery(absl::LogSeverity level,
                                                 absl::Duration period) &&;
 
-  // Mutates the builder so that the result status will be VLOGged (without a
-  // stack trace) when this builder is converted to a Status.  `verbose_level`
-  // indicates the verbosity level that would be passed to VLOG().  This
-  // overrides the logging settings from earlier calls to any of the logging
-  // mutator functions.  Returns `*this` to allow method chaining.
+  /// Mutates the builder so that the result status will be VLOGged (without a
+  /// stack trace) when this builder is converted to a Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.
+  ///
+  /// @param verbose_level The verbosity level that would be passed to VLOG().
+  /// @return `*this` to allow method chaining.
   StatusBuilder& VLog(int verbose_level) &;
+
+  /// Mutates the builder so that the result status will be VLOGged (without a
+  /// stack trace) when this builder is converted to a Status.
+  ///
+  /// This overrides the logging settings from earlier calls to any of the
+  /// logging mutator functions.
+  ///
+  /// @param verbose_level The verbosity level that would be passed to VLOG().
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& VLog(int verbose_level) &&;
 
-  // Mutates the builder so that a stack trace will be logged if the status is
-  // logged. One of the logging setters above should be called as well. If
-  // logging is not yet enabled this behaves as if LogInfo().EmitStackTrace()
-  // was called. Returns `*this` to allow method chaining.
+  /// Mutates the builder so that a stack trace will be logged if the status is
+  /// logged.
+  ///
+  /// One of the logging setters above should be called as well. If logging is
+  /// not yet enabled this behaves as if `LogInfo().EmitStackTrace()` was called.
+  ///
+  /// @return `*this` to allow method chaining.
   StatusBuilder& EmitStackTrace() &;
+
+  /// Mutates the builder so that a stack trace will be logged if the status is
+  /// logged.
+  ///
+  /// One of the logging setters above should be called as well. If logging is
+  /// not yet enabled this behaves as if `LogInfo().EmitStackTrace()` was called.
+  ///
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& EmitStackTrace() &&;
 
-  // Mutates the builder so that the result status will also be logged to the
-  // provided `sink` when this builder is converted to a status. Overwrites any
-  // sink set prior. The provided `sink` must point to a valid object by the
-  // time this builder is converted to a status. Has no effect if this builder
-  // is not configured to log by calling any of the LogXXX methods. Returns
-  // `*this` to allow method chaining.
+  /// Mutates the builder so that the result status will also be logged to the
+  /// provided `sink` when this builder is converted to a status.
+  ///
+  /// Overwrites any sink set prior. The provided `sink` must point to a valid
+  /// object by the time this builder is converted to a status. Has no effect if
+  /// this builder is not configured to log by calling any of the LogXXX methods.
+  ///
+  /// @param sink The log sink to also receive the result status.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& AlsoOutputToSink(absl::LogSink* sink) &;
+
+  /// Mutates the builder so that the result status will also be logged to the
+  /// provided `sink` when this builder is converted to a status.
+  ///
+  /// Overwrites any sink set prior. The provided `sink` must point to a valid
+  /// object by the time this builder is converted to a status. Has no effect if
+  /// this builder is not configured to log by calling any of the LogXXX methods.
+  ///
+  /// @param sink The log sink to also receive the result status.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& AlsoOutputToSink(absl::LogSink* sink) &&;
 
-  // Mutates the builder so that the result status will only be logged to the
-  // provided `sink` when this builder is converted to a status. Overwrites any
-  // sink set prior. The provided `sink` must point to a valid object by the
-  // time this builder is converted to a status. Has no effect if this builder
-  // is not configured to log by calling any of the LogXXX methods. Returns
-  // `*this` to allow method chaining.
+  /// Mutates the builder so that the result status will only be logged to the
+  /// provided `sink` when this builder is converted to a status.
+  ///
+  /// Overwrites any sink set prior. The provided `sink` must point to a valid
+  /// object by the time this builder is converted to a status. Has no effect if
+  /// this builder is not configured to log by calling any of the LogXXX methods.
+  ///
+  /// @param sink The log sink to exclusively receive the result status.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& OnlyOutputToSink(absl::LogSink* sink) &;
+
+  /// Mutates the builder so that the result status will only be logged to the
+  /// provided `sink` when this builder is converted to a status.
+  ///
+  /// Overwrites any sink set prior. The provided `sink` must point to a valid
+  /// object by the time this builder is converted to a status. Has no effect if
+  /// this builder is not configured to log by calling any of the LogXXX methods.
+  ///
+  /// @param sink The log sink to exclusively receive the result status.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& OnlyOutputToSink(absl::LogSink* sink) &&;
 
-  // Appends to the extra message that will be added to the original status.  By
-  // default, the extra message is added to the original message as if by
-  // `util::Annotate`, which includes a convenience separator between the
-  // original message and the enriched one.
+  /// Appends to the extra message that will be added to the original status.
+  ///
+  /// By default, the extra message is added to the original message as if by
+  /// `util::Annotate`, which includes a convenience separator between the
+  /// original message and the enriched one.
+  ///
+  /// @param value The value to append to the extra message.
+  /// @return `*this` to allow method chaining.
   template <typename T>
   StatusBuilder& operator<<(const T& value) &;
 
+  /// Appends to the extra message that will be added to the original status.
+  ///
+  /// By default, the extra message is added to the original message as if by
+  /// `util::Annotate`, which includes a convenience separator between the
+  /// original message and the enriched one.
+  ///
+  /// @param value The value to append to the extra message.
+  /// @return `*this` to allow method chaining.
   template <typename T>
   ABSL_MUST_USE_RESULT StatusBuilder&& operator<<(const T& value) &&;
 
-  // Adds a payload for the status that will be returned by this StatusBuilder.
-  // Note that this is equivalent to `Status::SetPayload`, to attach protos to
-  // the MessageSet payload, use `util::AttachPayload`. Returns '*this' to allow
-  // method chaining.
+  /// Adds a payload for the status that will be returned by this StatusBuilder.
+  ///
+  /// Note that this is equivalent to `Status::SetPayload`; to attach protos to
+  /// the MessageSet payload, use `util::AttachPayload`.
+  ///
+  /// @param type_url The type URL identifying the payload.
+  /// @param payload The payload data to attach.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& SetPayload(absl::string_view type_url, absl::Cord payload) &;
+
+  /// Adds a payload for the status that will be returned by this StatusBuilder.
+  ///
+  /// Note that this is equivalent to `Status::SetPayload`; to attach protos to
+  /// the MessageSet payload, use `util::AttachPayload`.
+  ///
+  /// @param type_url The type URL identifying the payload.
+  /// @param payload The payload data to attach.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& SetPayload(absl::string_view type_url,
                                                   absl::Cord payload) && {
     return std::move(SetPayload(type_url, std::move(payload)));
   }
 
+  /// Returns the payload associated with `type_url`, if present.
+  ///
+  /// @param type_url The type URL identifying the payload.
+  /// @return The payload, or `std::nullopt` if none is attached.
   std::optional<absl::Cord> GetPayload(absl::string_view type_url) const;
 
-  // INTERNAL API. NOT FOR PUBLIC USE.
+  /// Attaches a `MessageSet` extension payload to the result status.
+  ///
+  /// INTERNAL API. NOT FOR PUBLIC USE.
+  ///
+  /// @param obj The extension message to attach.
+  /// @param id The extension identifier for `obj`.
+  /// @return `*this` to allow method chaining.
   template <typename MessageSetExtension, typename ExtensionIdentifier>
   auto AttachPayload(const MessageSetExtension& obj,
                      const ExtensionIdentifier& id) &  //
@@ -310,9 +531,14 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return *this;
   }
 
-  // As above, but &&-qualified.
-  //
-  // Uses decltype() to propagate template constraints (SFINAE).
+  /// Attaches a `MessageSet` extension payload to the result status.
+  ///
+  /// As above, but &&-qualified. Uses `decltype()` to propagate template
+  /// constraints (SFINAE).
+  ///
+  /// @param obj The extension message to attach.
+  /// @param id The extension identifier for `obj`.
+  /// @return `*this` to allow method chaining.
   template <typename MessageSetExtension, typename ExtensionIdentifier>
   ABSL_MUST_USE_RESULT auto AttachPayload(const MessageSetExtension& obj,
                                           const ExtensionIdentifier& id) &&  //
@@ -320,9 +546,12 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return std::move(AttachPayload(obj, id));
   }
 
-  // Like `AttachPayload() &`, but with the default extension ID.
-  //
-  // INTERNAL API. NOT FOR PUBLIC USE.
+  /// Attaches a `MessageSet` extension payload using the default extension ID.
+  ///
+  /// INTERNAL API. NOT FOR PUBLIC USE.
+  ///
+  /// @param obj The extension message to attach.
+  /// @return `*this` to allow method chaining.
   template <typename MessageSetExtension>
   auto AttachPayload(const MessageSetExtension& obj) &  //
       -> std::enable_if_t<
@@ -332,26 +561,37 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return *this;
   }
 
-  // As above, but &&-qualified.
-  //
-  // Uses decltype() to propagate template constraints (SFINAE).
+  /// Attaches a `MessageSet` extension payload using the default extension ID.
+  ///
+  /// As above, but &&-qualified. Uses `decltype()` to propagate template
+  /// constraints (SFINAE).
+  ///
+  /// @param obj The extension message to attach.
+  /// @return `*this` to allow method chaining.
   template <typename MessageSetExtension>
   ABSL_MUST_USE_RESULT auto AttachPayload(const MessageSetExtension& obj) &&  //
       -> decltype(std::move(AttachPayload(obj))) {
     return std::move(AttachPayload(obj));
   }
 
-  // HasPayload()
-  //
-  // Indicates whether the Status object that will be returned by the
-  // StatusBuilder contains any payloads with a type extending proto2's
-  // `MessageSet`, returning `true` if so. Having a payload does not guarantee
-  // the presence of a payload with a specific type. Note that returning `false`
-  // does not necessarily indicate the absence of a payload, but only the
-  // absence on one which extends `MessageSet`.
+  /// Indicates whether the result status contains any `MessageSet` payloads.
+  ///
+  /// Indicates whether the Status object that will be returned by the
+  /// StatusBuilder contains any payloads with a type extending proto2's
+  /// `MessageSet`, returning `true` if so. Having a payload does not guarantee
+  /// the presence of a payload with a specific type. Note that returning `false`
+  /// does not necessarily indicate the absence of a payload, but only the
+  /// absence of one which extends `MessageSet`.
+  ///
+  /// @return `true` if a `MessageSet` payload is present.
   bool HasPayload() const;
 
-  // INTERNAL API. NOT FOR PUBLIC USE.
+  /// Sets a non-canonical error code on the result status.
+  ///
+  /// INTERNAL API. NOT FOR PUBLIC USE.
+  ///
+  /// @param code The error code to set.
+  /// @return `*this` to allow method chaining.
   template <typename Enum>
   auto SetErrorCode(Enum code) &  //
       -> std::enable_if_t<
@@ -361,18 +601,31 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return *this;
   }
 
-  // As above, but &&-qualified.
-  //
-  // Uses decltype() to propagate template constraints (SFINAE).
+  /// Sets a non-canonical error code on the result status.
+  ///
+  /// As above, but &&-qualified. Uses `decltype()` to propagate template
+  /// constraints (SFINAE).
+  ///
+  /// @param code The error code to set.
+  /// @return `*this` to allow method chaining.
   template <typename Enum>
   ABSL_MUST_USE_RESULT auto SetErrorCode(Enum code) &&  //
       -> decltype(std::move(SetErrorCode(code))) {
     return std::move(SetErrorCode(code));
   }
 
-  // Sets the status code for the status that will be returned by this
-  // StatusBuilder. Returns `*this` to allow method chaining.
+  /// Sets the status code for the status that will be returned by this
+  /// StatusBuilder.
+  ///
+  /// @param code The canonical status code to set.
+  /// @return `*this` to allow method chaining.
   StatusBuilder& SetCode(absl::StatusCode code) &;
+
+  /// Sets the status code for the status that will be returned by this
+  /// StatusBuilder.
+  ///
+  /// @param code The canonical status code to set.
+  /// @return `*this` to allow method chaining.
   ABSL_MUST_USE_RESULT StatusBuilder&& SetCode(absl::StatusCode code) && {
     return std::move(SetCode(code));
   }
@@ -473,20 +726,26 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
   //     task->Return();
   //   }
 
-  // Calls `adaptor` on this status builder to apply policies, type conversions,
-  // and/or side effects on the StatusBuilder. Returns the value returned by
-  // `adaptor`, which may be any type including `void`. See comments above.
-  //
-  // Style guide exception for Ref qualified methods and rvalue refs
-  // (cl/128258530).  This allows us to avoid a copy in the common case.
-  //
-  // Note: All With() overrides are equivalent, and return Adaptor(this). They
-  // are part of an ongoing LSC investigation.
+  /// Calls `adaptor` on this status builder to apply policies, type conversions,
+  /// and/or side effects on the StatusBuilder.
+  ///
+  /// This overload matches pure-policy adaptors, which return a `StatusBuilder`.
+  ///
+  /// @param adaptor The functor to apply to this builder.
+  /// @return The value returned by `adaptor`.
   template <typename Adaptor>
   auto With(Adaptor&& adaptor) & -> status_internal::PurePolicy<
       Adaptor, StatusBuilder&> {
     return std::forward<Adaptor>(adaptor)(*this);
   }
+
+  /// Calls `adaptor` on this status builder to apply policies, type conversions,
+  /// and/or side effects on the StatusBuilder.
+  ///
+  /// This overload matches pure-policy adaptors, which return a `StatusBuilder`.
+  ///
+  /// @param adaptor The functor to apply to this builder.
+  /// @return The value returned by `adaptor`.
   template <typename Adaptor>
   ABSL_MUST_USE_RESULT auto With(
       Adaptor&&
@@ -494,11 +753,26 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return std::forward<Adaptor>(adaptor)(std::move(*this));
   }
 
+  /// Calls `adaptor` on this status builder to apply policies, type conversions,
+  /// and/or side effects on the StatusBuilder.
+  ///
+  /// This overload matches side-effect adaptors, which return an `absl::Status`.
+  ///
+  /// @param adaptor The functor to apply to this builder.
+  /// @return The value returned by `adaptor`.
   template <typename Adaptor>
   auto With(Adaptor&& adaptor) & -> status_internal::SideEffect<
       Adaptor, StatusBuilder&> {
     return std::forward<Adaptor>(adaptor)(*this);
   }
+
+  /// Calls `adaptor` on this status builder to apply policies, type conversions,
+  /// and/or side effects on the StatusBuilder.
+  ///
+  /// This overload matches side-effect adaptors, which return an `absl::Status`.
+  ///
+  /// @param adaptor The functor to apply to this builder.
+  /// @return The value returned by `adaptor`.
   template <typename Adaptor>
   ABSL_MUST_USE_RESULT auto With(
       Adaptor&&
@@ -506,11 +780,28 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return std::forward<Adaptor>(adaptor)(std::move(*this));
   }
 
+  /// Calls `adaptor` on this status builder to apply policies, type conversions,
+  /// and/or side effects on the StatusBuilder.
+  ///
+  /// This overload matches conversion adaptors, which return any other type
+  /// (including `void`).
+  ///
+  /// @param adaptor The functor to apply to this builder.
+  /// @return The value returned by `adaptor`.
   template <typename Adaptor>
   auto With(Adaptor&& adaptor) & -> status_internal::Conversion<
       Adaptor, StatusBuilder&> {
     return std::forward<Adaptor>(adaptor)(*this);
   }
+
+  /// Calls `adaptor` on this status builder to apply policies, type conversions,
+  /// and/or side effects on the StatusBuilder.
+  ///
+  /// This overload matches conversion adaptors, which return any other type
+  /// (including `void`).
+  ///
+  /// @param adaptor The functor to apply to this builder.
+  /// @return The value returned by `adaptor`.
   template <typename Adaptor>
   ABSL_MUST_USE_RESULT auto With(
       Adaptor&&
@@ -518,35 +809,51 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return std::forward<Adaptor>(adaptor)(std::move(*this));
   }
 
-  // Returns true if the Status created by this builder will be ok().
+  /// Returns true if the Status created by this builder will be ok().
+  ///
+  /// @return `true` if the result status will be OK.
   ABSL_MUST_USE_RESULT bool ok() const;
 
-  // Returns the (canonical) error code for the Status created by this builder.
+  /// Returns the (canonical) error code for the Status created by this builder.
+  ///
+  /// @return The canonical status code of the result status.
   absl::StatusCode code() const;
 
-  // Implicit conversion to Status.
-  //
-  // Careful: this operator has side effects, so it should be called at
-  // most once. In particular, do NOT use this conversion operator to inspect
-  // the status from an adapter object passed into With().
-  //
-  // Style guide exception for using Ref qualified methods and for implicit
-  // conversions (cl/124566728).  This override allows us to implement
-  // ABSL_RETURN_IF_ERROR with 2 move operations in the common case.
+  /// Implicit conversion to Status.
+  ///
+  /// Careful: this operator has side effects, so it should be called at
+  /// most once. In particular, do NOT use this conversion operator to inspect
+  /// the status from an adapter object passed into With().
+  ///
+  /// @return The resulting status.
   operator absl::Status() const&;  // NOLINT: Builder converts implicitly.
+
+  /// Implicit conversion to Status.
+  ///
+  /// Careful: this operator has side effects, so it should be called at
+  /// most once. In particular, do NOT use this conversion operator to inspect
+  /// the status from an adapter object passed into With().
+  ///
+  /// @return The resulting status.
   operator absl::Status() &&;      // NOLINT: Builder converts implicitly.
 
-  // Returns the source location used to create this builder. This differs from
-  // `GetPreviousSourceLocations()` as this location is the single location for
-  // the creation of this builder.
+  /// Returns the source location used to create this builder.
+  ///
+  /// This differs from `GetPreviousSourceLocations()` as this location is the
+  /// single location for the creation of this builder.
+  ///
+  /// @return The source location associated with this builder.
   ABSL_MUST_USE_RESULT absl::SourceLocation source_location() const;
 
-  // Returns the source locations previously recorded in the status. This will
-  // not include the source location of the `StatusBuilder` itself (which is
-  // available via `source_location()`). When the builder is converted to a
-  // Status, the builder's location will be appended to this list of previous
-  // locations. For `StatusBuilder`s created without an original status (e.g.,
-  // from a status code), this will be empty.
+  /// Returns the source locations previously recorded in the status.
+  ///
+  /// This will not include the source location of the `StatusBuilder` itself
+  /// (which is available via `source_location()`). When the builder is converted
+  /// to a Status, the builder's location will be appended to this list of
+  /// previous locations. For `StatusBuilder`s created without an original status
+  /// (e.g., from a status code), this will be empty.
+  ///
+  /// @return The list of previously recorded source locations.
   decltype(auto) GetPreviousSourceLocations() const {
     if (rep_ == nullptr) {
       return absl::OkStatus().GetSourceLocations();
@@ -554,10 +861,14 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
     return rep_->status.GetSourceLocations();
   }
 
-  // Returns a string based on the `mode`. This produces the same string as
-  // would converting to a Status and calling operator<<, but it does so without
-  // side effects (e.g., logging). Therefore, it is safe to use from within an
-  // adapter object passed into With().
+  /// Returns a string representation of the status this builder would produce.
+  ///
+  /// This produces the same string as would converting to a Status and calling
+  /// `operator<<`, but it does so without side effects (e.g., logging).
+  /// Therefore, it is safe to use from within an adapter object passed into
+  /// `With()`.
+  ///
+  /// @return The string representation of the result status.
   std::string ToString() const;
 
  private:
@@ -690,64 +1001,94 @@ class ABSL_MUST_USE_RESULT StatusBuilder {
   // minimize stack space.
   std::unique_ptr<Rep> rep_;
 
+  /// Test fixture granted access to `Rep`'s implementation.
   // For testing Rep's implememntation.
   friend class StatusBuilderTest;
 };
 
-// Implicitly converts `builder` to `Status` and write it to `os`.
+/// Implicitly converts `builder` to `Status` and writes it to `os`.
+///
+/// @param os The output stream to write to.
+/// @param builder The builder to convert and write.
+/// @return The output stream `os`.
 std::ostream& operator<<(std::ostream& os, const StatusBuilder& builder);
+
+/// Implicitly converts `builder` to `Status` and writes it to `os`.
+///
+/// @param os The output stream to write to.
+/// @param builder The builder to convert and write.
+/// @return The output stream `os`.
 std::ostream& operator<<(std::ostream& os, StatusBuilder&& builder);
 
-// StatusBuilder policy to append an extra message to the original status.
-//
-// This is most useful with adaptors such as util::TaskReturn that otherwise
-// would prevent use of operator<<.  For example:
-//
-//   ABSL_RETURN_IF_ERROR(foo(val))
-//       .With(absl::ExtraMessage("when calling foo()"))
-//       .With(util::TaskReturn(task));
-//
-// or
-//
-//   ABSL_RETURN_IF_ERROR(foo(val))
-//       .With(absl::ExtraMessage() << "val: " << val)
-//       .With(util::TaskReturn(task));
-//
-// Note in the above example, the ABSL_RETURN_IF_ERROR macro ensures the
-// ExtraMessage expression is evaluated only in the error case, so efficiency of
-// constructing the message is not a concern in the success case.
+/// StatusBuilder policy to append an extra message to the original status.
+///
+/// This is most useful with adaptors such as `util::TaskReturn` that otherwise
+/// would prevent use of `operator<<`.  For example:
+///
+///     ABSL_RETURN_IF_ERROR(foo(val))
+///         .With(absl::ExtraMessage("when calling foo()"))
+///         .With(util::TaskReturn(task));
+///
+/// or
+///
+///     ABSL_RETURN_IF_ERROR(foo(val))
+///         .With(absl::ExtraMessage() << "val: " << val)
+///         .With(util::TaskReturn(task));
+///
+/// Note in the above example, the `ABSL_RETURN_IF_ERROR` macro ensures the
+/// `ExtraMessage` expression is evaluated only in the error case, so efficiency
+/// of constructing the message is not a concern in the success case.
 class ExtraMessage {
  public:
+  /// Creates an `ExtraMessage` with an empty message.
   ExtraMessage() : ExtraMessage(std::string()) {}
+
+  /// Creates an `ExtraMessage` initialized with `msg`.
+  ///
+  /// @param msg The initial extra message.
   explicit ExtraMessage(std::string msg)
       : msg_(std::move(msg)), stream_(msg_) {}
 
+  /// Move constructor.
+  ///
+  /// @param other The `ExtraMessage` to move from.
   ExtraMessage(
       ExtraMessage&& other) noexcept  // strings::OStringStream is stateless
                                       // so we can simply move over the message.
       : ExtraMessage(std::move(other.msg_)) {}
 
-  // Appends to the extra message that will be added to the original status.  By
-  // default, the extra message is added to the original message as if by
-  // `util::Annotate`, which includes a convenience separator between the
-  // original message and the enriched one.
+  /// Appends to the extra message that will be added to the original status.
+  ///
+  /// By default, the extra message is added to the original message as if by
+  /// `util::Annotate`, which includes a convenience separator between the
+  /// original message and the enriched one.
+  ///
+  /// @param value The value to append to the extra message.
+  /// @return `*this` to allow method chaining.
   template <typename T>
   ExtraMessage& operator<<(const T& value) & {
     stream_ << value;
     return *this;
   }
 
-  // As above, preserving the rvalue-ness of the ExtraMessage object.
+  /// Appends to the extra message, preserving the rvalue-ness of the object.
+  ///
+  /// @param value The value to append to the extra message.
+  /// @return `*this` to allow method chaining.
   template <typename T>
   ExtraMessage&& operator<<(const T& value) && {
     *this << value;
     return std::move(*this);
   }
 
-  // Appends to the extra message that will be added to the original status.  By
-  // default, the extra message is added to the original message as if by
-  // `util::Annotate`, which includes a convenience separator between the
-  // original message and the enriched one.
+  /// Appends the accumulated extra message to `builder`.
+  ///
+  /// By default, the extra message is added to the original message as if by
+  /// `util::Annotate`, which includes a convenience separator between the
+  /// original message and the enriched one.
+  ///
+  /// @param builder The builder to append the extra message to.
+  /// @return The builder with the extra message appended.
   StatusBuilder operator()(StatusBuilder builder) const {
     builder << msg_;
     return builder;
@@ -960,14 +1301,18 @@ inline absl::SourceLocation StatusBuilder::source_location() const {
   return loc_;
 }
 
-// HasPayload()
-//
-// Indicates whether the Status object that will be returned by the
-// StatusBuilder contains any payloads with a type extending proto2's
-// `MessageSet`, returning `true` if so. Having a payload does not guarantee the
-// presence of a payload with a specific type. Note that returning `false` does
-// not necessarily indicate the absence of a payload, but only the absence on
-// one which extends `MessageSet`.
+/// Indicates whether the status that `builder` will return has a `MessageSet`
+/// payload.
+///
+/// Indicates whether the Status object that will be returned by the
+/// StatusBuilder contains any payloads with a type extending proto2's
+/// `MessageSet`, returning `true` if so. Having a payload does not guarantee the
+/// presence of a payload with a specific type. Note that returning `false` does
+/// not necessarily indicate the absence of a payload, but only the absence of
+/// one which extends `MessageSet`.
+///
+/// @param builder The builder whose result status is inspected.
+/// @return `true` if a `MessageSet` payload is present.
 inline bool HasPayload(const StatusBuilder& builder) {
   return builder.HasPayload();
 }

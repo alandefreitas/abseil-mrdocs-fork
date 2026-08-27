@@ -39,191 +39,221 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// Low-level stack trace helpers shared by the public `GetStack*()` routines.
 namespace internal_stacktrace {
 
-// As above, but skips fix-ups for efficiency.
+/// Same as `GetStackTrace()`, but skips fix-ups for efficiency.
+///
+/// @param result Buffer to receive the recorded program counter values.
+/// @param max_depth Maximum number of frames to record.
+/// @param skip_count Number of most recent stack frames to skip.
+/// @return The number of frames stored in `result`.
 extern int GetStackTraceNoFixup(void** result, int max_depth, int skip_count);
 
 }  // namespace internal_stacktrace
 
-// GetStackFrames()
-//
-// Records program counter values for up to `max_depth` frames, skipping the
-// most recent `skip_count` stack frames, stores their corresponding values
-// and sizes in `results` and `sizes` buffers, and returns the number of frames
-// stored. (Note that the frame generated for the `absl::GetStackFrames()`
-// routine itself is also skipped.)
-//
-// Example:
-//
-//      main() { foo(); }
-//      foo() { bar(); }
-//      bar() {
-//        void* result[10];
-//        int sizes[10];
-//        int depth = absl::GetStackFrames(result, sizes, 10, 1);
-//      }
-//
-// The current stack frame would consist of three function calls: `bar()`,
-// `foo()`, and then `main()`; however, since the `GetStackFrames()` call sets
-// `skip_count` to `1`, it will skip the frame for `bar()`, the most recently
-// invoked function call. It will therefore return 2 and fill `result` with
-// program counters within the following functions:
-//
-//      result[0]       foo()
-//      result[1]       main()
-//
-// (Note: in practice, a few more entries after `main()` may be added to account
-// for startup processes.)
-//
-// Corresponding stack frame sizes will also be recorded:
-//
-//    sizes[0]       16
-//    sizes[1]       16
-//
-// (Stack frame sizes of `16` above are just for illustration purposes.)
-//
-// Stack frame sizes of 0 or less indicate that those frame sizes couldn't
-// be identified.
-//
-// This routine may return fewer stack frame entries than are
-// available. Also note that `result` and `sizes` must both be non-null.
+/// Records program counter values for up to `max_depth` frames, skipping the
+/// most recent `skip_count` stack frames, stores their corresponding values
+/// and sizes in `results` and `sizes` buffers, and returns the number of frames
+/// stored. (Note that the frame generated for the `absl::GetStackFrames()`
+/// routine itself is also skipped.)
+///
+/// Example:
+///
+///      main() { foo(); }
+///      foo() { bar(); }
+///      bar() {
+///        void* result[10];
+///        int sizes[10];
+///        int depth = absl::GetStackFrames(result, sizes, 10, 1);
+///      }
+///
+/// The current stack frame would consist of three function calls: `bar()`,
+/// `foo()`, and then `main()`; however, since the `GetStackFrames()` call sets
+/// `skip_count` to `1`, it will skip the frame for `bar()`, the most recently
+/// invoked function call. It will therefore return 2 and fill `result` with
+/// program counters within the following functions:
+///
+///      result[0]       foo()
+///      result[1]       main()
+///
+/// (Note: in practice, a few more entries after `main()` may be added to account
+/// for startup processes.)
+///
+/// Corresponding stack frame sizes will also be recorded:
+///
+///    sizes[0]       16
+///    sizes[1]       16
+///
+/// (Stack frame sizes of `16` above are just for illustration purposes.)
+///
+/// Stack frame sizes of 0 or less indicate that those frame sizes couldn't
+/// be identified.
+///
+/// This routine may return fewer stack frame entries than are
+/// available. Also note that `result` and `sizes` must both be non-null.
+///
+/// @param result Buffer to receive the recorded program counter values.
+/// @param sizes Buffer to receive the corresponding stack frame sizes.
+/// @param max_depth Maximum number of frames to record.
+/// @param skip_count Number of most recent stack frames to skip.
+/// @return The number of frames stored in `result` and `sizes`.
 extern int GetStackFrames(void** result, int* sizes, int max_depth,
                           int skip_count);
 
-// GetStackFramesWithContext()
-//
-// Records program counter values obtained from a signal handler. Records
-// program counter values for up to `max_depth` frames, skipping the most recent
-// `skip_count` stack frames, stores their corresponding values and sizes in
-// `results` and `sizes` buffers, and returns the number of frames stored. (Note
-// that the frame generated for the `absl::GetStackFramesWithContext()` routine
-// itself is also skipped.)
-//
-// The `uc` parameter, if non-null, should be a pointer to a `ucontext_t` value
-// passed to a signal handler registered via the `sa_sigaction` field of a
-// `sigaction` struct. (See
-// http://man7.org/linux/man-pages/man2/sigaction.2.html.) The `uc` value may
-// help a stack unwinder to provide a better stack trace under certain
-// conditions. `uc` may safely be null.
-//
-// The `min_dropped_frames` output parameter, if non-null, points to the
-// location to note any dropped stack frames, if any, due to buffer limitations
-// or other reasons. (This value will be set to `0` if no frames were dropped.)
-// The number of total stack frames is guaranteed to be >= skip_count +
-// max_depth + *min_dropped_frames.
+/// Records program counter values obtained from a signal handler. Records
+/// program counter values for up to `max_depth` frames, skipping the most recent
+/// `skip_count` stack frames, stores their corresponding values and sizes in
+/// `results` and `sizes` buffers, and returns the number of frames stored. (Note
+/// that the frame generated for the `absl::GetStackFramesWithContext()` routine
+/// itself is also skipped.)
+///
+/// The `uc` parameter, if non-null, should be a pointer to a `ucontext_t` value
+/// passed to a signal handler registered via the `sa_sigaction` field of a
+/// `sigaction` struct. (See
+/// http://man7.org/linux/man-pages/man2/sigaction.2.html.) The `uc` value may
+/// help a stack unwinder to provide a better stack trace under certain
+/// conditions. `uc` may safely be null.
+///
+/// The `min_dropped_frames` output parameter, if non-null, points to the
+/// location to note any dropped stack frames, if any, due to buffer limitations
+/// or other reasons. (This value will be set to `0` if no frames were dropped.)
+/// The number of total stack frames is guaranteed to be >= skip_count +
+/// max_depth + *min_dropped_frames.
+///
+/// @param result Buffer to receive the recorded program counter values.
+/// @param sizes Buffer to receive the corresponding stack frame sizes.
+/// @param max_depth Maximum number of frames to record.
+/// @param skip_count Number of most recent stack frames to skip.
+/// @param uc Pointer to the signal handler's `ucontext_t` value, or null.
+/// @param min_dropped_frames If non-null, receives the number of stack frames dropped.
+/// @return The number of frames stored in `result` and `sizes`.
 extern int GetStackFramesWithContext(void** result, int* sizes, int max_depth,
                                      int skip_count, const void* uc,
                                      int* min_dropped_frames);
 
-// GetStackTrace()
-//
-// Records program counter values for up to `max_depth` frames, skipping the
-// most recent `skip_count` stack frames, stores their corresponding values
-// in `results`, and returns the number of frames
-// stored. Note that this function is similar to `absl::GetStackFrames()`
-// except that it returns the stack trace only, and not stack frame sizes.
-//
-// Example:
-//
-//      main() { foo(); }
-//      foo() { bar(); }
-//      bar() {
-//        void* result[10];
-//        int depth = absl::GetStackTrace(result, 10, 1);
-//      }
-//
-// This produces:
-//
-//      result[0]       foo
-//      result[1]       main
-//           ....       ...
-//
-// `result` must not be null.
+/// Records program counter values for up to `max_depth` frames, skipping the
+/// most recent `skip_count` stack frames, stores their corresponding values
+/// in `results`, and returns the number of frames
+/// stored. Note that this function is similar to `absl::GetStackFrames()`
+/// except that it returns the stack trace only, and not stack frame sizes.
+///
+/// Example:
+///
+///      main() { foo(); }
+///      foo() { bar(); }
+///      bar() {
+///        void* result[10];
+///        int depth = absl::GetStackTrace(result, 10, 1);
+///      }
+///
+/// This produces:
+///
+///      result[0]       foo
+///      result[1]       main
+///           ....       ...
+///
+/// `result` must not be null.
+///
+/// @param result Buffer to receive the recorded program counter values.
+/// @param max_depth Maximum number of frames to record.
+/// @param skip_count Number of most recent stack frames to skip.
+/// @return The number of frames stored in `result`.
 extern int GetStackTrace(void** result, int max_depth, int skip_count);
 
-// GetStackTraceWithContext()
-//
-// Records program counter values obtained from a signal handler. Records
-// program counter values for up to `max_depth` frames, skipping the most recent
-// `skip_count` stack frames, stores their corresponding values in `results`,
-// and returns the number of frames stored. (Note that the frame generated for
-// the `absl::GetStackFramesWithContext()` routine itself is also skipped.)
-//
-// The `uc` parameter, if non-null, should be a pointer to a `ucontext_t` value
-// passed to a signal handler registered via the `sa_sigaction` field of a
-// `sigaction` struct. (See
-// http://man7.org/linux/man-pages/man2/sigaction.2.html.) The `uc` value may
-// help a stack unwinder to provide a better stack trace under certain
-// conditions. `uc` may safely be null.
-//
-// The `min_dropped_frames` output parameter, if non-null, points to the
-// location to note any dropped stack frames, if any, due to buffer limitations
-// or other reasons. (This value will be set to `0` if no frames were dropped.)
-// The number of total stack frames is guaranteed to be >= skip_count +
-// max_depth + *min_dropped_frames.
+/// Records program counter values obtained from a signal handler. Records
+/// program counter values for up to `max_depth` frames, skipping the most recent
+/// `skip_count` stack frames, stores their corresponding values in `results`,
+/// and returns the number of frames stored. (Note that the frame generated for
+/// the `absl::GetStackFramesWithContext()` routine itself is also skipped.)
+///
+/// The `uc` parameter, if non-null, should be a pointer to a `ucontext_t` value
+/// passed to a signal handler registered via the `sa_sigaction` field of a
+/// `sigaction` struct. (See
+/// http://man7.org/linux/man-pages/man2/sigaction.2.html.) The `uc` value may
+/// help a stack unwinder to provide a better stack trace under certain
+/// conditions. `uc` may safely be null.
+///
+/// The `min_dropped_frames` output parameter, if non-null, points to the
+/// location to note any dropped stack frames, if any, due to buffer limitations
+/// or other reasons. (This value will be set to `0` if no frames were dropped.)
+/// The number of total stack frames is guaranteed to be >= skip_count +
+/// max_depth + *min_dropped_frames.
+///
+/// @param result Buffer to receive the recorded program counter values.
+/// @param max_depth Maximum number of frames to record.
+/// @param skip_count Number of most recent stack frames to skip.
+/// @param uc Pointer to the signal handler's `ucontext_t` value, or null.
+/// @param min_dropped_frames If non-null, receives the number of stack frames dropped.
+/// @return The number of frames stored in `result`.
 extern int GetStackTraceWithContext(void** result, int max_depth,
                                     int skip_count, const void* uc,
                                     int* min_dropped_frames);
 
-// SetStackUnwinder()
-//
-// Provides a custom function for unwinding stack frames that will be used in
-// place of the default stack unwinder when invoking the static
-// GetStack{Frames,Trace}{,WithContext}() functions above.
-//
-// The arguments passed to the unwinder function will match the
-// arguments passed to `absl::GetStackFramesWithContext()` except that sizes
-// will be non-null iff the caller is interested in frame sizes.
-//
-// If unwinder is set to null, we revert to the default stack-tracing behavior.
-//
-// *****************************************************************************
-// WARNING
-// *****************************************************************************
-//
-// absl::SetStackUnwinder is not suitable for general purpose use.  It is
-// provided for custom runtimes.
-// Some things to watch out for when calling `absl::SetStackUnwinder()`:
-//
-// (a) The unwinder may be called from within signal handlers and
-// therefore must be async-signal-safe.
-//
-// (b) Even after a custom stack unwinder has been unregistered, other
-// threads may still be in the process of using that unwinder.
-// Therefore do not clean up any state that may be needed by an old
-// unwinder.
-// *****************************************************************************
+/// Provides a custom function for unwinding stack frames that will be used in
+/// place of the default stack unwinder when invoking the static
+/// GetStack{Frames,Trace}{,WithContext}() functions above.
+///
+/// The arguments passed to the unwinder function will match the
+/// arguments passed to `absl::GetStackFramesWithContext()` except that sizes
+/// will be non-null iff the caller is interested in frame sizes.
+///
+/// If unwinder is set to null, we revert to the default stack-tracing behavior.
+///
+/// *****************************************************************************
+/// WARNING
+/// *****************************************************************************
+///
+/// absl::SetStackUnwinder is not suitable for general purpose use.  It is
+/// provided for custom runtimes.
+/// Some things to watch out for when calling `absl::SetStackUnwinder()`:
+///
+/// (a) The unwinder may be called from within signal handlers and
+/// therefore must be async-signal-safe.
+///
+/// (b) Even after a custom stack unwinder has been unregistered, other
+/// threads may still be in the process of using that unwinder.
+/// Therefore do not clean up any state that may be needed by an old
+/// unwinder.
+/// *****************************************************************************
+///
+/// @param unwinder Custom stack-unwinding function to install, or null to revert to the default.
 extern void SetStackUnwinder(int (*unwinder)(void** pcs, int* sizes,
                                              int max_depth, int skip_count,
                                              const void* uc,
                                              int* min_dropped_frames));
 
-// DefaultStackUnwinder()
-//
-// Records program counter values of up to `max_depth` frames, skipping the most
-// recent `skip_count` stack frames, and stores their corresponding values in
-// `pcs`. (Note that the frame generated for this call itself is also skipped.)
-// This function acts as a generic stack-unwinder; prefer usage of the more
-// specific `GetStack{Trace,Frames}{,WithContext}()` functions above.
-//
-// If you have set your own stack unwinder (with the `SetStackUnwinder()`
-// function above, you can still get the default stack unwinder by calling
-// `DefaultStackUnwinder()`, which will ignore any previously set stack unwinder
-// and use the default one instead.
-//
-// Because this function is generic, only `pcs` is guaranteed to be non-null
-// upon return. It is legal for `sizes`, `uc`, and `min_dropped_frames` to all
-// be null when called.
-//
-// The semantics are the same as the corresponding `GetStack*()` function in the
-// case where `absl::SetStackUnwinder()` was never called. Equivalents are:
-//
-//                       null sizes         |        non-nullptr sizes
-//             |==========================================================|
-//     null uc | GetStackTrace()            | GetStackFrames()            |
-// non-null uc | GetStackTraceWithContext() | GetStackFramesWithContext() |
-//             |==========================================================|
+/// Records program counter values of up to `max_depth` frames, skipping the most
+/// recent `skip_count` stack frames, and stores their corresponding values in
+/// `pcs`. (Note that the frame generated for this call itself is also skipped.)
+/// This function acts as a generic stack-unwinder; prefer usage of the more
+/// specific `GetStack{Trace,Frames}{,WithContext}()` functions above.
+///
+/// If you have set your own stack unwinder (with the `SetStackUnwinder()`
+/// function above, you can still get the default stack unwinder by calling
+/// `DefaultStackUnwinder()`, which will ignore any previously set stack unwinder
+/// and use the default one instead.
+///
+/// Because this function is generic, only `pcs` is guaranteed to be non-null
+/// upon return. It is legal for `sizes`, `uc`, and `min_dropped_frames` to all
+/// be null when called.
+///
+/// The semantics are the same as the corresponding `GetStack*()` function in the
+/// case where `absl::SetStackUnwinder()` was never called. Equivalents are:
+///
+///                       null sizes         |        non-nullptr sizes
+///             |==========================================================|
+///     null uc | GetStackTrace()            | GetStackFrames()            |
+/// non-null uc | GetStackTraceWithContext() | GetStackFramesWithContext() |
+///             |==========================================================|
+///
+/// @param pcs Buffer to receive the recorded program counter values.
+/// @param sizes If non-null, receives the corresponding stack frame sizes.
+/// @param max_depth Maximum number of frames to record.
+/// @param skip_count Number of most recent stack frames to skip.
+/// @param uc Pointer to the signal handler's `ucontext_t` value, or null.
+/// @param min_dropped_frames If non-null, receives the number of stack frames dropped.
+/// @return The number of frames stored in `pcs`.
 extern int DefaultStackUnwinder(void** pcs, int* sizes, int max_depth,
                                 int skip_count, const void* uc,
                                 int* min_dropped_frames);
@@ -237,18 +267,28 @@ extern bool StackTraceWorksForTest();
 }  // namespace debugging_internal
 
 namespace internal_stacktrace {
+/// Returns true if the platform's stack unwinder is expected to need fix-ups
+/// applied via `FixUpStack()`.
+///
+/// @return True if stack fix-ups should be applied.
 extern bool ShouldFixUpStack();
 
-// Fixes up the stack trace of the current thread, in the first `depth` frames
-// of each buffer. The buffers need to be larger than `depth`, to accommodate
-// any newly inserted elements. `depth` is updated to reflect the new number of
-// elements valid across all the buffers. (It is therefore recommended that all
-// buffer sizes be equal.)
-//
-// The `frames` and `sizes` parameters denote the bounds of the stack frame
-// corresponding to each instruction pointer in the `pcs`.
-// Any elements inside these buffers may be zero or null, in which case that
-// information is assumed to be absent/unavailable.
+/// Fixes up the stack trace of the current thread, in the first `depth` frames
+/// of each buffer. The buffers need to be larger than `depth`, to accommodate
+/// any newly inserted elements. `depth` is updated to reflect the new number of
+/// elements valid across all the buffers. (It is therefore recommended that all
+/// buffer sizes be equal.)
+///
+/// The `frames` and `sizes` parameters denote the bounds of the stack frame
+/// corresponding to each instruction pointer in the `pcs`.
+/// Any elements inside these buffers may be zero or null, in which case that
+/// information is assumed to be absent/unavailable.
+///
+/// @param pcs Buffer of program counter values to fix up.
+/// @param frames Buffer of stack frame bounds corresponding to each entry in `pcs`.
+/// @param sizes Buffer of stack frame sizes corresponding to each entry in `pcs`.
+/// @param capacity Capacity of the `pcs`, `frames`, and `sizes` buffers.
+/// @param depth Number of valid elements on input; updated to the new number of valid elements.
 extern void FixUpStack(void** pcs, uintptr_t* frames, int* sizes,
                        size_t capacity, size_t& depth);
 

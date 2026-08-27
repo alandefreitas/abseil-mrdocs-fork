@@ -21,21 +21,27 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// DefaultHashContainerHash is a convenience alias for the functor that is used
-// by default by Abseil hash-based (unordered) containers for hashing when
-// `Hash` type argument is not explicitly specified.
-//
-// This type alias can be used by generic code that wants to provide more
-// flexibility for defining underlying containers.
+/// Convenience alias for the default hashing functor of Abseil hash-based
+/// (unordered) containers.
+///
+/// `DefaultHashContainerHash` is the functor that is used by default by Abseil
+/// hash-based (unordered) containers for hashing when the `Hash` type argument
+/// is not explicitly specified.
+///
+/// This type alias can be used by generic code that wants to provide more
+/// flexibility for defining underlying containers.
 template <typename T>
 using DefaultHashContainerHash = absl::container_internal::hash_default_hash<T>;
 
-// DefaultHashContainerEq is a convenience alias for the functor that is used by
-// default by Abseil hash-based (unordered) containers for equality check when
-// `Eq` type argument is not explicitly specified.
-//
-// This type alias can be used by generic code that wants to provide more
-// flexibility for defining underlying containers.
+/// Convenience alias for the default equality functor of Abseil hash-based
+/// (unordered) containers.
+///
+/// `DefaultHashContainerEq` is the functor that is used by default by Abseil
+/// hash-based (unordered) containers for equality check when the `Eq` type
+/// argument is not explicitly specified.
+///
+/// This type alias can be used by generic code that wants to provide more
+/// flexibility for defining underlying containers.
 template <typename T>
 using DefaultHashContainerEq = absl::container_internal::hash_default_eq<T>;
 

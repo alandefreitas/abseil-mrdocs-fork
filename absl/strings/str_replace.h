@@ -51,85 +51,101 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// StrReplaceAll()
-//
-// Replaces character sequences within a given string with replacements provided
-// within an initializer list of key/value pairs. Candidate replacements are
-// considered in order as they occur within the string, with earlier matches
-// taking precedence, and longer matches taking precedence for candidates
-// starting at the same position in the string. Once a substitution is made, the
-// replaced text is not considered for any further substitutions.
-//
-// Example:
-//
-//   std::string s = absl::StrReplaceAll(
-//       "$who bought $count #Noun. Thanks $who!",
-//       {{"$count", absl::StrCat(5)},
-//        {"$who", "Bob"},
-//        {"#Noun", "Apples"}});
-//   EXPECT_EQ("Bob bought 5 Apples. Thanks Bob!", s);
+/// Replaces character sequences within a given string with replacements
+/// provided within an initializer list of key/value pairs.
+///
+/// Candidate replacements are considered in order as they occur within the
+/// string, with earlier matches taking precedence, and longer matches taking
+/// precedence for candidates starting at the same position in the string. Once
+/// a substitution is made, the replaced text is not considered for any further
+/// substitutions.
+///
+/// Example:
+///
+///   std::string s = absl::StrReplaceAll(
+///       "$who bought $count #Noun. Thanks $who!",
+///       {{"$count", absl::StrCat(5)},
+///        {"$who", "Bob"},
+///        {"#Noun", "Apples"}});
+///   EXPECT_EQ("Bob bought 5 Apples. Thanks Bob!", s);
+///
+/// @param s The string to search for replacements.
+/// @param replacements The key/value pairs of sequences to replace.
+/// @return A new string with the replacements applied.
 [[nodiscard]] std::string StrReplaceAll(
     absl::string_view s,
     std::initializer_list<std::pair<absl::string_view, absl::string_view>>
         replacements);
 
-// Overload of `StrReplaceAll()` to accept a container of key/value replacement
-// pairs (typically either an associative map or a `std::vector` of `std::pair`
-// elements). A vector of pairs is generally more efficient.
-//
-// Examples:
-//
-//   std::map<const absl::string_view, const absl::string_view> replacements;
-//   replacements["$who"] = "Bob";
-//   replacements["$count"] = "5";
-//   replacements["#Noun"] = "Apples";
-//   std::string s = absl::StrReplaceAll(
-//       "$who bought $count #Noun. Thanks $who!",
-//       replacements);
-//   EXPECT_EQ("Bob bought 5 Apples. Thanks Bob!", s);
-//
-//   // A std::vector of std::pair elements can be more efficient.
-//   std::vector<std::pair<const absl::string_view, std::string>> replacements;
-//   replacements.push_back({"&", "&amp;"});
-//   replacements.push_back({"<", "&lt;"});
-//   replacements.push_back({">", "&gt;"});
-//   std::string s = absl::StrReplaceAll("if (ptr < &foo)",
-//                                  replacements);
-//   EXPECT_EQ("if (ptr &lt; &amp;foo)", s);
+/// Overload of `StrReplaceAll()` to accept a container of key/value replacement
+/// pairs (typically either an associative map or a `std::vector` of `std::pair`
+/// elements). A vector of pairs is generally more efficient.
+///
+/// Examples:
+///
+///   std::map<const absl::string_view, const absl::string_view> replacements;
+///   replacements["$who"] = "Bob";
+///   replacements["$count"] = "5";
+///   replacements["#Noun"] = "Apples";
+///   std::string s = absl::StrReplaceAll(
+///       "$who bought $count #Noun. Thanks $who!",
+///       replacements);
+///   EXPECT_EQ("Bob bought 5 Apples. Thanks Bob!", s);
+///
+///   // A std::vector of std::pair elements can be more efficient.
+///   std::vector<std::pair<const absl::string_view, std::string>> replacements;
+///   replacements.push_back({"&", "&amp;"});
+///   replacements.push_back({"<", "&lt;"});
+///   replacements.push_back({">", "&gt;"});
+///   std::string s = absl::StrReplaceAll("if (ptr < &foo)",
+///                                  replacements);
+///   EXPECT_EQ("if (ptr &lt; &amp;foo)", s);
+///
+/// @param s The string to search for replacements.
+/// @param replacements The container of key/value pairs of sequences to replace.
+/// @return A new string with the replacements applied.
 template <typename StrToStrMapping>
 std::string StrReplaceAll(absl::string_view s,
                           const StrToStrMapping& replacements);
 
-// Overload of `StrReplaceAll()` to replace character sequences within a given
-// output string *in place* with replacements provided within an initializer
-// list of key/value pairs, returning the number of substitutions that occurred.
-//
-// Example:
-//
-//   std::string s = std::string("$who bought $count #Noun. Thanks $who!");
-//   int count;
-//   count = absl::StrReplaceAll({{"$count", absl::StrCat(5)},
-//                               {"$who", "Bob"},
-//                               {"#Noun", "Apples"}}, &s);
-//  EXPECT_EQ(count, 4);
-//  EXPECT_EQ("Bob bought 5 Apples. Thanks Bob!", s);
+/// Overload of `StrReplaceAll()` to replace character sequences within a given
+/// output string *in place* with replacements provided within an initializer
+/// list of key/value pairs, returning the number of substitutions that occurred.
+///
+/// Example:
+///
+///   std::string s = std::string("$who bought $count #Noun. Thanks $who!");
+///   int count;
+///   count = absl::StrReplaceAll({{"$count", absl::StrCat(5)},
+///                               {"$who", "Bob"},
+///                               {"#Noun", "Apples"}}, &s);
+///  EXPECT_EQ(count, 4);
+///  EXPECT_EQ("Bob bought 5 Apples. Thanks Bob!", s);
+///
+/// @param replacements The key/value pairs of sequences to replace.
+/// @param target The string to modify in place.
+/// @return The number of substitutions that occurred.
 int StrReplaceAll(
     std::initializer_list<std::pair<absl::string_view, absl::string_view>>
         replacements,
     std::string* absl_nonnull target);
 
-// Overload of `StrReplaceAll()` to replace patterns within a given output
-// string *in place* with replacements provided within a container of key/value
-// pairs.
-//
-// Example:
-//
-//   std::string s = std::string("if (ptr < &foo)");
-//   int count = absl::StrReplaceAll({{"&", "&amp;"},
-//                                    {"<", "&lt;"},
-//                                    {">", "&gt;"}}, &s);
-//  EXPECT_EQ(count, 2);
-//  EXPECT_EQ("if (ptr &lt; &amp;foo)", s);
+/// Overload of `StrReplaceAll()` to replace patterns within a given output
+/// string *in place* with replacements provided within a container of key/value
+/// pairs.
+///
+/// Example:
+///
+///   std::string s = std::string("if (ptr < &foo)");
+///   int count = absl::StrReplaceAll({{"&", "&amp;"},
+///                                    {"<", "&lt;"},
+///                                    {">", "&gt;"}}, &s);
+///  EXPECT_EQ(count, 2);
+///  EXPECT_EQ("if (ptr &lt; &amp;foo)", s);
+///
+/// @param replacements The container of key/value pairs of sequences to replace.
+/// @param target The string to modify in place.
+/// @return The number of substitutions that occurred.
 template <typename StrToStrMapping>
 int StrReplaceAll(const StrToStrMapping& replacements,
                   std::string* absl_nonnull target);

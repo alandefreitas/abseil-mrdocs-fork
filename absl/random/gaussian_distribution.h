@@ -82,31 +82,54 @@ class ABSL_DLL gaussian_distribution_base {
 
 }  // namespace random_internal
 
-// absl::gaussian_distribution:
-// Generates a number conforming to a Gaussian distribution.
+/// Generates a number conforming to a Gaussian distribution.
 template <typename RealType = double>
 class gaussian_distribution : random_internal::gaussian_distribution_base {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = RealType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = gaussian_distribution;
 
+    /// Constructs the parameter set from the mean and standard deviation.
+    ///
+    /// @param mean The mean, specifying the location of the peak.
+    /// @param stddev The standard deviation.
     explicit param_type(result_type mean = 0, result_type stddev = 1)
         : mean_(mean), stddev_(stddev) {}
 
-    // Returns the mean distribution parameter.  The mean specifies the location
-    // of the peak.  The default value is 0.0.
+    /// Returns the mean distribution parameter.
+    ///
+    /// The mean specifies the location of the peak.  The default value is 0.0.
+    ///
+    /// @return The mean.
     result_type mean() const { return mean_; }
 
-    // Returns the deviation distribution parameter.  The default value is 1.0.
+    /// Returns the deviation distribution parameter.
+    ///
+    /// The default value is 1.0.
+    ///
+    /// @return The standard deviation.
     result_type stddev() const { return stddev_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.mean_ == b.mean_ && a.stddev_ == b.stddev_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -121,42 +144,89 @@ class gaussian_distribution : random_internal::gaussian_distribution_base {
         "using a floating-point type.");
   };
 
+  /// Constructs a distribution with mean 0 and standard deviation 1.
   gaussian_distribution() : gaussian_distribution(0) {}
 
+  /// Constructs a distribution with the given mean and standard deviation.
+  ///
+  /// @param mean The mean, specifying the location of the peak.
+  /// @param stddev The standard deviation.
   explicit gaussian_distribution(result_type mean, result_type stddev = 1)
       : param_(mean, stddev) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit gaussian_distribution(const param_type& p) : param_(p) {}
 
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
-  // Generating functions
+  /// Generates a random value.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random value drawn from the distribution.
   template <typename URBG>
   result_type operator()(URBG& g) {  // NOLINT(runtime/references)
     return (*this)(g, param_);
   }
 
+  /// Generates a random value using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random value drawn from the distribution.
   template <typename URBG>
   result_type operator()(URBG& g,  // NOLINT(runtime/references)
                          const param_type& p);
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param p The new parameter set.
   void param(const param_type& p) { param_ = p; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return Negative infinity.
   result_type(min)() const {
     return -std::numeric_limits<result_type>::infinity();
   }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return Positive infinity.
   result_type(max)() const {
     return std::numeric_limits<result_type>::infinity();
   }
 
+  /// Returns the mean distribution parameter.
+  ///
+  /// @return The mean.
   result_type mean() const { return param_.mean(); }
+  /// Returns the deviation distribution parameter.
+  ///
+  /// @return The standard deviation.
   result_type stddev() const { return param_.stddev(); }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const gaussian_distribution& a,
                          const gaussian_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const gaussian_distribution& a,
                          const gaussian_distribution& b) {
     return a.param_ != b.param_;
@@ -179,6 +249,11 @@ gaussian_distribution<RealType>::operator()(
   return p.mean() + p.stddev() * static_cast<result_type>(zignor(g));
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -189,6 +264,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,  // NOLINT(runtime/references)

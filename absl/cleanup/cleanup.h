@@ -79,9 +79,20 @@
 #include "absl/base/macros.h"
 #include "absl/cleanup/internal/cleanup.h"
 
+// Abseil's root namespace.
+//
+// Contains the scope guard type `Cleanup` and its factory function.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// Scope guard that invokes a callback on scope exit.
+///
+/// `absl::Cleanup` implements the scope guard idiom, invoking the contained
+/// callback's `operator()() &&` on scope exit.
+///
+/// This class doesn't allocate or take any locks, and is safe to use in a signal
+/// handler. Of course the callback with which it is constructed also must be
+/// signal safe in order for this to be useful.
 template <typename Arg, typename Callback = void()>
 class [[nodiscard]] Cleanup final {
   static_assert(cleanup_internal::WasDeduced<Arg>(),
@@ -91,21 +102,34 @@ class [[nodiscard]] Cleanup final {
                 "Callbacks that return values are not supported.");
 
  public:
+  /// Construct a `Cleanup` that runs the given callback on scope exit.
+  ///
+  /// @param callback The callable to invoke when the guard is destroyed.
   Cleanup(Callback callback) : storage_(std::move(callback)) {}  // NOLINT
 
+  /// Move-construct a `Cleanup`, transferring ownership of the callback.
+  ///
+  /// @param other The guard to move from.
   Cleanup(Cleanup&& other) = default;
 
+  /// Prevent the callback from executing.
+  ///
+  /// Invoke on an rvalue, e.g. `std::move(cleanup).Cancel()`.
   void Cancel() && {
     absl::base_internal::HardeningAssert(storage_.IsCallbackEngaged());
     storage_.DestroyCallback();
   }
 
+  /// Execute the callback early and prevent it from running on destruction.
+  ///
+  /// Invoke on an rvalue, e.g. `std::move(cleanup).Invoke()`.
   void Invoke() && {
     absl::base_internal::HardeningAssert(storage_.IsCallbackEngaged());
     storage_.InvokeCallback();
     storage_.DestroyCallback();
   }
 
+  /// Invoke the callback, if still engaged, on scope exit.
   ~Cleanup() {
     if (storage_.IsCallbackEngaged()) {
       storage_.InvokeCallback();
@@ -117,15 +141,20 @@ class [[nodiscard]] Cleanup final {
   cleanup_internal::Storage<Callback> storage_;
 };
 
-// `absl::Cleanup c = /* callback */;`
-//
-// C++17 type deduction API for creating an instance of `absl::Cleanup`
+/// Deduction guide for creating an `absl::Cleanup` from a callback.
+///
+/// C++17 type deduction API for creating an instance of `absl::Cleanup`,
+/// e.g. `absl::Cleanup c = /* callback */;`.
 template <typename Callback>
 Cleanup(Callback callback) -> Cleanup<cleanup_internal::Tag, Callback>;
 
-// `auto c = absl::MakeCleanup(/* callback */);`
-//
-// C++11 type deduction API for creating an instance of `absl::Cleanup`
+/// Create an `absl::Cleanup` from a callback.
+///
+/// C++11 type deduction API for creating an instance of `absl::Cleanup`,
+/// e.g. `auto c = absl::MakeCleanup(/* callback */);`.
+///
+/// @param callback The callable to invoke when the guard is destroyed.
+/// @return A `Cleanup` guard owning `callback`.
 template <typename... Args, typename Callback>
 absl::Cleanup<cleanup_internal::Tag, Callback> MakeCleanup(Callback callback) {
   static_assert(cleanup_internal::WasDeduced<cleanup_internal::Tag, Args...>(),

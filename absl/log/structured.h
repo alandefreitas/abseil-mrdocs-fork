@@ -40,30 +40,32 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// LogAsLiteral()
-//
-// Annotates its argument as a string literal so that structured logging
-// captures it as a `literal` field instead of a `str` field (the default).
-// This does not affect the text representation, only the structure.
-//
-// Streaming `LogAsLiteral(s)` into a `std::ostream` behaves just like streaming
-// `s` directly.
-//
-// Using `LogAsLiteral()` is occasionally appropriate and useful when proxying
-// data logged from another system or another language.  For example:
-//
-//   void Logger::LogString(absl::string_view str, absl::LogSeverity severity,
-//                          const char *file, int line) {
-//     LOG(LEVEL(severity)).AtLocation(file, line) << str;
-//   }
-//   void Logger::LogStringLiteral(absl::string_view str,
-//                                 absl::LogSeverity severity, const char *file,
-//                                 int line) {
-//     LOG(LEVEL(severity)).AtLocation(file, line) << absl::LogAsLiteral(str);
-//   }
-//
-// `LogAsLiteral` should only be used as a streaming operand and not, for
-// example, as a local variable initializer.
+/// Annotates its argument as a string literal so that structured logging
+/// captures it as a `literal` field instead of a `str` field (the
+/// default). This does not affect the text representation, only the
+/// structure.
+///
+/// Streaming `LogAsLiteral(s)` into a `std::ostream` behaves just like
+/// streaming `s` directly.
+///
+/// Using `LogAsLiteral()` is occasionally appropriate and useful when
+/// proxying data logged from another system or another language.  For
+/// example:
+///
+///   void Logger::LogString(absl::string_view str, absl::LogSeverity severity,
+///                          const char *file, int line) {
+///     LOG(LEVEL(severity)).AtLocation(file, line) << str;
+///   }
+///   void Logger::LogStringLiteral(absl::string_view str,
+///                                 absl::LogSeverity severity, const char *file,
+///                                 int line) {
+///     LOG(LEVEL(severity)).AtLocation(file, line) << absl::LogAsLiteral(str);
+///   }
+///
+/// `LogAsLiteral` should only be used as a streaming operand and not, for
+/// example, as a local variable initializer.
+/// @param s The string to annotate as a literal.
+/// @return An object that streams `s` as a literal field.
 inline log_internal::AsLiteralImpl LogAsLiteral(
     absl::string_view s ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return log_internal::AsLiteralImpl(s);

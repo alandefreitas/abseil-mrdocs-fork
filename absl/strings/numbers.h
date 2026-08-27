@@ -53,67 +53,92 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// SimpleAtoi()
-//
-// Converts the given string (optionally followed or preceded by ASCII
-// whitespace) into an integer value, returning `true` if successful. The string
-// must reflect a base-10 integer whose value falls within the range of the
-// integer type (optionally preceded by a `+` or `-`). If any errors are
-// encountered, this function returns `false`, leaving `out` in an unspecified
-// state.
+/// Converts the given string into an integer value, returning `true` if
+/// successful.
+///
+/// The string (optionally followed or preceded by ASCII whitespace) must
+/// reflect a base-10 integer whose value falls within the range of the
+/// integer type (optionally preceded by a `+` or `-`). If any errors are
+/// encountered, this function returns `false`, leaving `out` in an unspecified
+/// state.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 template <typename int_type>
 [[nodiscard]] bool SimpleAtoi(absl::string_view str,
                               int_type* absl_nonnull out);
 
-// SimpleAtof()
-//
-// Converts the given string (optionally followed or preceded by ASCII
-// whitespace) into a float, which may be rounded on overflow or underflow,
-// returning `true` if successful.
-// See https://en.cppreference.com/w/c/string/byte/strtof for details about the
-// allowed formats for `str`, except SimpleAtof() is locale-independent and will
-// always use the "C" locale. If any errors are encountered, this function
-// returns `false`, leaving `out` in an unspecified state.
+/// Converts the given string into a float, returning `true` if successful.
+///
+/// The string (optionally followed or preceded by ASCII whitespace) may be
+/// rounded on overflow or underflow. See
+/// https://en.cppreference.com/w/c/string/byte/strtof for details about the
+/// allowed formats for `str`, except `SimpleAtof()` is locale-independent and
+/// will always use the "C" locale. If any errors are encountered, this function
+/// returns `false`, leaving `out` in an unspecified state.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] bool SimpleAtof(absl::string_view str, float* absl_nonnull out);
 
-// SimpleAtod()
-//
-// Converts the given string (optionally followed or preceded by ASCII
-// whitespace) into a double, which may be rounded on overflow or underflow,
-// returning `true` if successful.
-// See https://en.cppreference.com/w/c/string/byte/strtof for details about the
-// allowed formats for `str`, except SimpleAtod is locale-independent and will
-// always use the "C" locale. If any errors are encountered, this function
-// returns `false`, leaving `out` in an unspecified state.
+/// Converts the given string into a double, returning `true` if successful.
+///
+/// The string (optionally followed or preceded by ASCII whitespace) may be
+/// rounded on overflow or underflow. See
+/// https://en.cppreference.com/w/c/string/byte/strtof for details about the
+/// allowed formats for `str`, except `SimpleAtod` is locale-independent and
+/// will always use the "C" locale. If any errors are encountered, this function
+/// returns `false`, leaving `out` in an unspecified state.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] bool SimpleAtod(absl::string_view str, double* absl_nonnull out);
 
-// SimpleAtob()
-//
-// Converts the given string into a boolean, returning `true` if successful.
-// The following case-insensitive strings are interpreted as boolean `true`:
-// "true", "t", "yes", "y", "1". The following case-insensitive strings
-// are interpreted as boolean `false`: "false", "f", "no", "n", "0". If any
-// errors are encountered, this function returns `false`, leaving `out` in an
-// unspecified state.
+/// Converts the given string into a boolean, returning `true` if successful.
+///
+/// The following case-insensitive strings are interpreted as boolean `true`:
+/// "true", "t", "yes", "y", "1". The following case-insensitive strings
+/// are interpreted as boolean `false`: "false", "f", "no", "n", "0". If any
+/// errors are encountered, this function returns `false`, leaving `out` in an
+/// unspecified state.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] bool SimpleAtob(absl::string_view str, bool* absl_nonnull out);
 
-// SimpleHexAtoi()
-//
-// Converts a hexadecimal string (optionally followed or preceded by ASCII
-// whitespace) to an integer, returning `true` if successful. Only valid base-16
-// hexadecimal integers whose value falls within the range of the integer type
-// (optionally preceded by a `+` or `-`) can be converted. A valid hexadecimal
-// value may include both upper and lowercase character symbols, and may
-// optionally include a leading "0x" (or "0X") number prefix, which is ignored
-// by this function. If any errors are encountered, this function returns
-// `false`, leaving `out` in an unspecified state.
+/// Converts a hexadecimal string to an integer, returning `true` if successful.
+///
+/// The string (optionally followed or preceded by ASCII whitespace) must be a
+/// valid base-16 hexadecimal integer whose value falls within the range of the
+/// integer type (optionally preceded by a `+` or `-`). A valid hexadecimal
+/// value may include both upper and lowercase character symbols, and may
+/// optionally include a leading "0x" (or "0X") number prefix, which is ignored
+/// by this function. If any errors are encountered, this function returns
+/// `false`, leaving `out` in an unspecified state.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 template <typename int_type>
 [[nodiscard]] bool SimpleHexAtoi(absl::string_view str,
                                  int_type* absl_nonnull out);
 
-// Overloads of SimpleHexAtoi() for 128 bit integers.
+/// Overload of `SimpleHexAtoi()` for signed 128-bit integers.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] inline bool SimpleHexAtoi(absl::string_view str,
                                         absl::int128* absl_nonnull out);
+/// Overload of `SimpleHexAtoi()` for unsigned 128-bit integers.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] inline bool SimpleHexAtoi(absl::string_view str,
                                         absl::uint128* absl_nonnull out);
 
@@ -331,11 +356,21 @@ template <typename int_type>
   return numbers_internal::safe_strtoi_base(str, out, 10);
 }
 
+/// Overload of `SimpleAtoi()` for signed 128-bit integers.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] inline bool SimpleAtoi(absl::string_view str,
                                      absl::int128* absl_nonnull out) {
   return numbers_internal::safe_strto128_base(str, out, 10);
 }
 
+/// Overload of `SimpleAtoi()` for unsigned 128-bit integers.
+///
+/// @param str The string to parse.
+/// @param out The location that receives the parsed value.
+/// @return `true` on success; otherwise `false`.
 [[nodiscard]] inline bool SimpleAtoi(absl::string_view str,
                                      absl::uint128* absl_nonnull out) {
   return numbers_internal::safe_strtou128_base(str, out, 10);

@@ -44,25 +44,32 @@
 #include "absl/functional/internal/back_binder.h"
 #include "absl/utility/utility.h"
 
+// Utilities for binding arguments to invocable objects.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// bind_back()
-//
-// Binds the last N arguments of an invocable object and stores them by value.
-//
-// Like `std::bind()`, `absl::bind_back()` is implicitly convertible to
-// `std::function`.  In particular, it may be used as a simpler replacement for
-// `std::bind()` in most cases, as it does not require placeholders to be
-// specified. More importantly, it provides more reliable correctness guarantees
-// than `std::bind()`; while `std::bind()` will silently ignore passing more
-// parameters than expected, for example, `absl::bind_back()` will report such
-// mis-uses as errors. In C++23, `absl::bind_back` is replaced by
-// `std::bind_back`.
-//
+/// bind_back()
+///
+/// Binds the last N arguments of an invocable object and stores them by value.
+///
+/// Like `std::bind()`, `absl::bind_back()` is implicitly convertible to
+/// `std::function`.  In particular, it may be used as a simpler replacement for
+/// `std::bind()` in most cases, as it does not require placeholders to be
+/// specified. More importantly, it provides more reliable correctness guarantees
+/// than `std::bind()`; while `std::bind()` will silently ignore passing more
+/// parameters than expected, for example, `absl::bind_back()` will report such
+/// mis-uses as errors. In C++23, `absl::bind_back` is replaced by
+/// `std::bind_back`.
+///
 #if defined(__cpp_lib_bind_back) && __cpp_lib_bind_back >= 202202L
+/// Binds the last N arguments of an invocable object and stores them by value.
 using std::bind_back;
 #else
+/// Binds the last N arguments of an invocable object and stores them by value.
+///
+/// @param func The invocable object to bind arguments to.
+/// @param args The arguments to bind to the back of `func`.
+/// @return A functor that invokes `func` with `args` appended.
 template <class F, class... BoundArgs>
 constexpr functional_internal::bind_back_t<F, BoundArgs...> bind_back(
     F&& func, BoundArgs&&... args) {

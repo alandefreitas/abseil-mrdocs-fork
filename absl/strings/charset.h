@@ -54,23 +54,34 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// A fast, bit-vector set of 8-bit unsigned characters.
 class CharSet {
  public:
+  /// Constructs an empty character set.
   constexpr CharSet() : m_() {}
 
-  // Initializes with a given string_view.
+  /// Initializes with a given string_view.
+  ///
+  /// @param str The characters to include in the set.
   constexpr explicit CharSet(absl::string_view str) : m_() {
     for (char c : str) {
       SetChar(static_cast<unsigned char>(c));
     }
   }
 
+  /// Tests whether the set contains a given character.
+  ///
+  /// @param c The character to test.
+  /// @return `true` if `c` is a member of the set.
   constexpr bool contains(char c) const {
     return ((m_[static_cast<unsigned char>(c) / 64] >>
              (static_cast<unsigned char>(c) % 64)) &
             0x1) == 0x1;
   }
 
+  /// Tests whether the set is empty.
+  ///
+  /// @return `true` if the set contains no characters.
   constexpr bool empty() const {
     for (uint64_t c : m_) {
       if (c != 0) return false;
@@ -78,49 +89,97 @@ class CharSet {
     return true;
   }
 
-  // Containing only a single specified char.
+  /// Containing only a single specified char.
+  ///
+  /// @param x The single character to include.
+  /// @return A set containing only `x`.
   static constexpr CharSet Char(char x) {
     return CharSet(CharMaskForWord(x, 0), CharMaskForWord(x, 1),
                    CharMaskForWord(x, 2), CharMaskForWord(x, 3));
   }
 
-  // Containing all the chars in the closed interval [lo,hi].
+  /// Containing all the chars in the closed interval [lo,hi].
+  ///
+  /// @param lo The lowest character in the range.
+  /// @param hi The highest character in the range.
+  /// @return A set containing every character in `[lo, hi]`.
   static constexpr CharSet Range(char lo, char hi) {
     return CharSet(RangeForWord(lo, hi, 0), RangeForWord(lo, hi, 1),
                    RangeForWord(lo, hi, 2), RangeForWord(lo, hi, 3));
   }
 
+  /// Computes the intersection of two character sets.
+  ///
+  /// @param a The left-hand operand.
+  /// @param b The right-hand operand.
+  /// @return A set with the characters present in both `a` and `b`.
   friend constexpr CharSet operator&(const CharSet& a, const CharSet& b) {
     return CharSet(a.m_[0] & b.m_[0], a.m_[1] & b.m_[1], a.m_[2] & b.m_[2],
                    a.m_[3] & b.m_[3]);
   }
 
+  /// Computes the union of two character sets.
+  ///
+  /// @param a The left-hand operand.
+  /// @param b The right-hand operand.
+  /// @return A set with the characters present in either `a` or `b`.
   friend constexpr CharSet operator|(const CharSet& a, const CharSet& b) {
     return CharSet(a.m_[0] | b.m_[0], a.m_[1] | b.m_[1], a.m_[2] | b.m_[2],
                    a.m_[3] | b.m_[3]);
   }
 
+  /// Computes the complement of a character set.
+  ///
+  /// @param a The operand to complement.
+  /// @return A set containing every character not present in `a`.
   friend constexpr CharSet operator~(const CharSet& a) {
     return CharSet(~a.m_[0], ~a.m_[1], ~a.m_[2], ~a.m_[3]);
   }
 
-  // Mirrors the char-classifying predicates in <cctype>.
+  /// The set of ASCII uppercase letters.
+  ///
+  /// @return A set containing `A` through `Z`.
   static constexpr CharSet AsciiUppercase() { return CharSet::Range('A', 'Z'); }
+  /// The set of ASCII lowercase letters.
+  ///
+  /// @return A set containing `a` through `z`.
   static constexpr CharSet AsciiLowercase() { return CharSet::Range('a', 'z'); }
+  /// The set of ASCII decimal digits.
+  ///
+  /// @return A set containing `0` through `9`.
   static constexpr CharSet AsciiDigits() { return CharSet::Range('0', '9'); }
+  /// The set of ASCII letters.
+  ///
+  /// @return A set containing the ASCII lowercase and uppercase letters.
   static constexpr CharSet AsciiAlphabet() {
     return AsciiLowercase() | AsciiUppercase();
   }
+  /// The set of ASCII letters and digits.
+  ///
+  /// @return A set containing the ASCII letters and decimal digits.
   static constexpr CharSet AsciiAlphanumerics() {
     return AsciiDigits() | AsciiAlphabet();
   }
+  /// The set of ASCII hexadecimal digits.
+  ///
+  /// @return A set containing `0`-`9`, `A`-`F`, and `a`-`f`.
   static constexpr CharSet AsciiHexDigits() {
     return AsciiDigits() | CharSet::Range('A', 'F') | CharSet::Range('a', 'f');
   }
+  /// The set of printable ASCII characters.
+  ///
+  /// @return A set containing the printable ASCII characters.
   static constexpr CharSet AsciiPrintable() {
     return CharSet::Range(0x20, 0x7e);
   }
+  /// The set of ASCII whitespace characters.
+  ///
+  /// @return A set containing the ASCII whitespace characters.
   static constexpr CharSet AsciiWhitespace() { return CharSet("\t\n\v\f\r "); }
+  /// The set of ASCII punctuation characters.
+  ///
+  /// @return A set containing the printable, non-alphanumeric,
+  ///         non-whitespace ASCII characters.
   static constexpr CharSet AsciiPunctuation() {
     return AsciiPrintable() & ~AsciiWhitespace() & ~AsciiAlphanumerics();
   }

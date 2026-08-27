@@ -24,61 +24,63 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::LogSeverity
-//
-// Four severity levels are defined. Logging APIs should terminate the program
-// when a message is logged at severity `kFatal`; the other levels have no
-// special semantics.
-//
-// Values other than the four defined levels (e.g. produced by `static_cast`)
-// are valid, but their semantics when passed to a function, macro, or flag
-// depend on the function, macro, or flag. The usual behavior is to normalize
-// such values to a defined severity level, however in some cases values other
-// than the defined levels are useful for comparison.
-//
-// Example:
-//
-//   // Effectively disables all logging:
-//   SetMinLogLevel(static_cast<absl::LogSeverity>(100));
-//
-// Abseil flags may be defined with type `LogSeverity`. Dependency layering
-// constraints require that the `AbslParseFlag()` overload be declared and
-// defined in the flags library itself rather than here. The `AbslUnparseFlag()`
-// overload is defined there as well for consistency.
-//
-// absl::LogSeverity Flag String Representation
-//
-// An `absl::LogSeverity` has a string representation used for parsing
-// command-line flags based on the enumerator name (e.g. `kFatal`) or
-// its unprefixed name (without the `k`) in any case-insensitive form. (E.g.
-// "FATAL", "fatal" or "Fatal" are all valid.) Unparsing such flags produces an
-// unprefixed string representation in all caps (e.g. "FATAL") or an integer.
-//
-// Additionally, the parser accepts arbitrary integers (as if the type were
-// `int`).
-//
-// Examples:
-//
-//   --my_log_level=kInfo
-//   --my_log_level=INFO
-//   --my_log_level=info
-//   --my_log_level=0
-//
-// `DFATAL` and `kLogDebugFatal` are similarly accepted.
-//
-// Unparsing a flag produces the same result as `absl::LogSeverityName()` for
-// the standard levels and a base-ten integer otherwise.
+/// Four severity levels are defined. Logging APIs should terminate the program
+/// when a message is logged at severity `kFatal`; the other levels have no
+/// special semantics.
+///
+/// Values other than the four defined levels (e.g. produced by `static_cast`)
+/// are valid, but their semantics when passed to a function, macro, or flag
+/// depend on the function, macro, or flag. The usual behavior is to normalize
+/// such values to a defined severity level, however in some cases values other
+/// than the defined levels are useful for comparison.
+///
+/// Example:
+///
+///   // Effectively disables all logging:
+///   SetMinLogLevel(static_cast<absl::LogSeverity>(100));
+///
+/// Abseil flags may be defined with type `LogSeverity`. Dependency layering
+/// constraints require that the `AbslParseFlag()` overload be declared and
+/// defined in the flags library itself rather than here. The `AbslUnparseFlag()`
+/// overload is defined there as well for consistency.
+///
+/// absl::LogSeverity Flag String Representation
+///
+/// An `absl::LogSeverity` has a string representation used for parsing
+/// command-line flags based on the enumerator name (e.g. `kFatal`) or
+/// its unprefixed name (without the `k`) in any case-insensitive form. (E.g.
+/// "FATAL", "fatal" or "Fatal" are all valid.) Unparsing such flags produces an
+/// unprefixed string representation in all caps (e.g. "FATAL") or an integer.
+///
+/// Additionally, the parser accepts arbitrary integers (as if the type were
+/// `int`).
+///
+/// Examples:
+///
+///   --my_log_level=kInfo
+///   --my_log_level=INFO
+///   --my_log_level=info
+///   --my_log_level=0
+///
+/// `DFATAL` and `kLogDebugFatal` are similarly accepted.
+///
+/// Unparsing a flag produces the same result as `absl::LogSeverityName()` for
+/// the standard levels and a base-ten integer otherwise.
 enum class LogSeverity : int {
+  /// Informational message; no special semantics.
   kInfo = 0,
+  /// Warning message; no special semantics.
   kWarning = 1,
+  /// Error message; no special semantics.
   kError = 2,
+  /// Fatal message; logging APIs should terminate the program.
   kFatal = 3,
 };
 
-// LogSeverities()
-//
-// Returns an iterable of all standard `absl::LogSeverity` values, ordered from
-// least to most severe.
+/// Returns an iterable of all standard `absl::LogSeverity` values, ordered from
+/// least to most severe.
+/// @return An array containing `kInfo`, `kWarning`, `kError`, and `kFatal`,
+/// in that order.
 constexpr std::array<absl::LogSeverity, 4> LogSeverities() {
   return {{absl::LogSeverity::kInfo, absl::LogSeverity::kWarning,
            absl::LogSeverity::kError, absl::LogSeverity::kFatal}};
@@ -94,10 +96,11 @@ static constexpr absl::LogSeverity kLogDebugFatal = absl::LogSeverity::kError;
 static constexpr absl::LogSeverity kLogDebugFatal = absl::LogSeverity::kFatal;
 #endif
 
-// LogSeverityName()
-//
-// Returns the all-caps string representation (e.g. "INFO") of the specified
-// severity level if it is one of the standard levels and "UNKNOWN" otherwise.
+/// Returns the all-caps string representation (e.g. "INFO") of the specified
+/// severity level if it is one of the standard levels and "UNKNOWN" otherwise.
+/// @param s The severity level to name.
+/// @return The all-caps name of `s`, or "UNKNOWN" if `s` is not a standard
+/// level.
 constexpr const char* LogSeverityName(absl::LogSeverity s) {
   switch (s) {
     case absl::LogSeverity::kInfo: return "INFO";
@@ -108,54 +111,79 @@ constexpr const char* LogSeverityName(absl::LogSeverity s) {
   return "UNKNOWN";
 }
 
-// NormalizeLogSeverity()
-//
-// Values less than `kInfo` normalize to `kInfo`; values greater than `kFatal`
-// normalize to `kError` (**NOT** `kFatal`).
+/// Values less than `kInfo` normalize to `kInfo`; values greater than `kFatal`
+/// normalize to `kError` (**NOT** `kFatal`).
+/// @param s The severity level to normalize.
+/// @return The normalized severity level.
 constexpr absl::LogSeverity NormalizeLogSeverity(absl::LogSeverity s) {
   absl::LogSeverity n = s;
   if (n < absl::LogSeverity::kInfo) n = absl::LogSeverity::kInfo;
   if (n > absl::LogSeverity::kFatal) n = absl::LogSeverity::kError;
   return n;
 }
+/// Overload that normalizes a raw integer as if it were an `absl::LogSeverity`.
+/// @param s The integer severity value to normalize.
+/// @return The normalized severity level.
 constexpr absl::LogSeverity NormalizeLogSeverity(int s) {
   return absl::NormalizeLogSeverity(static_cast<absl::LogSeverity>(s));
 }
 
-// operator<<
-//
-// The exact representation of a streamed `absl::LogSeverity` is deliberately
-// unspecified; do not rely on it.
+/// The exact representation of a streamed `absl::LogSeverity` is deliberately
+/// unspecified; do not rely on it.
+/// @param os The stream to write to.
+/// @param s The severity level to stream.
+/// @return `os`, after writing the representation of `s`.
 std::ostream& operator<<(std::ostream& os, absl::LogSeverity s);
 
-// Enums representing a lower bound for LogSeverity. APIs that only operate on
-// messages of at least a certain level (for example, `SetMinLogLevel()`) use
-// this type to specify that level. absl::LogSeverityAtLeast::kInfinity is
-// a level above all threshold levels and therefore no log message will
-// ever meet this threshold.
+/// Enums representing a lower bound for LogSeverity. APIs that only operate on
+/// messages of at least a certain level (for example, `SetMinLogLevel()`) use
+/// this type to specify that level. absl::LogSeverityAtLeast::kInfinity is
+/// a level above all threshold levels and therefore no log message will
+/// ever meet this threshold.
 enum class LogSeverityAtLeast : int {
+  /// Threshold matching `absl::LogSeverity::kInfo` and above.
   kInfo = static_cast<int>(absl::LogSeverity::kInfo),
+  /// Threshold matching `absl::LogSeverity::kWarning` and above.
   kWarning = static_cast<int>(absl::LogSeverity::kWarning),
+  /// Threshold matching `absl::LogSeverity::kError` and above.
   kError = static_cast<int>(absl::LogSeverity::kError),
+  /// Threshold matching `absl::LogSeverity::kFatal` and above.
   kFatal = static_cast<int>(absl::LogSeverity::kFatal),
+  /// A level above all threshold levels; no log message will ever meet this
+  /// threshold.
   kInfinity = 1000,
 };
 
+/// The exact representation of a streamed `absl::LogSeverityAtLeast` is
+/// deliberately unspecified; do not rely on it.
+/// @param os The stream to write to.
+/// @param s The severity threshold to stream.
+/// @return `os`, after writing the representation of `s`.
 std::ostream& operator<<(std::ostream& os, absl::LogSeverityAtLeast s);
 
-// Enums representing an upper bound for LogSeverity. APIs that only operate on
-// messages of at most a certain level (for example, buffer all messages at or
-// below a certain level) use this type to specify that level.
-// absl::LogSeverityAtMost::kNegativeInfinity is a level below all threshold
-// levels and therefore will exclude all log messages.
+/// Enums representing an upper bound for LogSeverity. APIs that only operate on
+/// messages of at most a certain level (for example, buffer all messages at or
+/// below a certain level) use this type to specify that level.
+/// absl::LogSeverityAtMost::kNegativeInfinity is a level below all threshold
+/// levels and therefore will exclude all log messages.
 enum class LogSeverityAtMost : int {
+  /// A level below all threshold levels; excludes all log messages.
   kNegativeInfinity = -1000,
+  /// Threshold matching `absl::LogSeverity::kInfo` and below.
   kInfo = static_cast<int>(absl::LogSeverity::kInfo),
+  /// Threshold matching `absl::LogSeverity::kWarning` and below.
   kWarning = static_cast<int>(absl::LogSeverity::kWarning),
+  /// Threshold matching `absl::LogSeverity::kError` and below.
   kError = static_cast<int>(absl::LogSeverity::kError),
+  /// Threshold matching `absl::LogSeverity::kFatal` and below.
   kFatal = static_cast<int>(absl::LogSeverity::kFatal),
 };
 
+/// The exact representation of a streamed `absl::LogSeverityAtMost` is
+/// deliberately unspecified; do not rely on it.
+/// @param os The stream to write to.
+/// @param s The severity threshold to stream.
+/// @return `os`, after writing the representation of `s`.
 std::ostream& operator<<(std::ostream& os, absl::LogSeverityAtMost s);
 
 #define COMPOP(op1, op2, T)                                         \
@@ -173,9 +201,29 @@ std::ostream& operator<<(std::ostream& os, absl::LogSeverityAtMost s);
 //   LogSeverity < LogSeverityAtLeast
 //   LogSeverity <= LogSeverityAtMost
 //   LogSeverity > LogSeverityAtMost
+/// Compares an `absl::LogSeverityAtLeast` threshold against an
+/// `absl::LogSeverity` value (in either operand order).
+/// @param lhs The left-hand operand.
+/// @param rhs The right-hand operand.
+/// @return `true` if the comparison holds, `false` otherwise.
 COMPOP(>, <, LogSeverityAtLeast)
+/// Compares an `absl::LogSeverityAtLeast` threshold against an
+/// `absl::LogSeverity` value (in either operand order).
+/// @param lhs The left-hand operand.
+/// @param rhs The right-hand operand.
+/// @return `true` if the comparison holds, `false` otherwise.
 COMPOP(<=, >=, LogSeverityAtLeast)
+/// Compares an `absl::LogSeverityAtMost` threshold against an
+/// `absl::LogSeverity` value (in either operand order).
+/// @param lhs The left-hand operand.
+/// @param rhs The right-hand operand.
+/// @return `true` if the comparison holds, `false` otherwise.
 COMPOP(<, >, LogSeverityAtMost)
+/// Compares an `absl::LogSeverityAtMost` threshold against an
+/// `absl::LogSeverity` value (in either operand order).
+/// @param lhs The left-hand operand.
+/// @param rhs The right-hand operand.
+/// @return `true` if the comparison holds, `false` otherwise.
 COMPOP(>=, <=, LogSeverityAtMost)
 #undef COMPOP
 

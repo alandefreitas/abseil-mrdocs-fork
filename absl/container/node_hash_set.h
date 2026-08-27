@@ -118,6 +118,13 @@ struct NodeHashSetPolicy;
 //   if (ducks.contains("dewey")) {
 //     std::cout << "We found dewey!" << std::endl;
 //   }
+/// An unordered associative container of unique keys that provides pointer
+/// stability for its elements.
+///
+/// An `absl::node_hash_set<T>` is an unordered associative container which
+/// has been optimized for both speed and memory footprint in most common use
+/// cases. Its interface is similar to that of `std::unordered_set<T>`, and
+/// unlike `absl::flat_hash_set` it guarantees pointer stability of its elements.
 template <
     class T,
     class Hash = typename container_internal::NodeHashSetPolicy<T>::DefaultHash,
@@ -183,6 +190,7 @@ class ABSL_ATTRIBUTE_OWNER node_hash_set
   //
   //   std::vector<std::string> v = {"a", "b"};
   //   absl::node_hash_set<std::string> set8(std::from_range, v);
+  /// Constructs an empty `node_hash_set`.
   node_hash_set() {}
   using Base::Base;
 
@@ -485,19 +493,21 @@ class ABSL_ATTRIBUTE_OWNER node_hash_set
   using Base::key_eq;
 };
 
-// erase_if(node_hash_set<>, Pred)
-//
-// Erases all elements that satisfy the predicate `pred` from the container `c`.
-// Returns the number of erased elements.
+/// Erases all elements that satisfy the predicate `pred` from the container `c`.
+///
+/// @param c The container to erase elements from.
+/// @param pred The predicate that selects which elements to erase.
+/// @return The number of erased elements.
 template <typename T, typename H, typename E, typename A, typename Predicate>
 typename node_hash_set<T, H, E, A>::size_type erase_if(
     node_hash_set<T, H, E, A>& c, Predicate pred) {
   return container_internal::EraseIf(pred, &c);
 }
 
-// swap(node_hash_set<>, node_hash_set<>)
-//
-// Swaps the contents of two `node_hash_set` containers.
+/// Swaps the contents of two `node_hash_set` containers.
+///
+/// @param x The first container to swap.
+/// @param y The second container to swap.
 //
 // NOTE: we need to define this function template in order for
 // `flat_hash_set::swap` to be called instead of `std::swap`. Even though we

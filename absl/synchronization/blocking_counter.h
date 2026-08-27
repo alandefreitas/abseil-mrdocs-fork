@@ -29,64 +29,74 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// BlockingCounter
-//
-// This class allows a thread to block for a pre-specified number of actions.
-// `BlockingCounter` maintains a single non-negative abstract integer "count"
-// with an initial value `initial_count`. A thread can then call `Wait()` on
-// this blocking counter to block until the specified number of events occur;
-// worker threads then call 'DecrementCount()` on the counter upon completion of
-// their work. Once the counter's internal "count" reaches zero, the blocked
-// thread unblocks.
-//
-// A `BlockingCounter` requires the following:
-//     - its `initial_count` is non-negative.
-//     - the number of calls to `DecrementCount()` on it is at most
-//       `initial_count`.
-//     - `Wait()` is called at most once on it.
-//
-// Given the above requirements, a `BlockingCounter` provides the following
-// guarantees:
-//     - Once its internal "count" reaches zero, no legal action on the object
-//       can further change the value of "count".
-//     - When `Wait()` returns, it is legal to destroy the `BlockingCounter`.
-//     - When `Wait()` returns, the number of calls to `DecrementCount()` on
-//       this blocking counter exactly equals `initial_count`.
-//
-// Example:
-//     BlockingCounter bcount(N);         // there are N items of work
-//     ... Allow worker threads to start.
-//     ... On completing each work item, workers do:
-//     ... bcount.DecrementCount();      // an item of work has been completed
-//
-//     bcount.Wait();                    // wait for all work to be complete
-//
+/// A counter that lets a thread block until a number of actions complete.
+///
+/// This class allows a thread to block for a pre-specified number of actions.
+/// `BlockingCounter` maintains a single non-negative abstract integer "count"
+/// with an initial value `initial_count`. A thread can then call `Wait()` on
+/// this blocking counter to block until the specified number of events occur;
+/// worker threads then call `DecrementCount()` on the counter upon completion of
+/// their work. Once the counter's internal "count" reaches zero, the blocked
+/// thread unblocks.
+///
+/// A `BlockingCounter` requires the following:
+///     - its `initial_count` is non-negative.
+///     - the number of calls to `DecrementCount()` on it is at most
+///       `initial_count`.
+///     - `Wait()` is called at most once on it.
+///
+/// Given the above requirements, a `BlockingCounter` provides the following
+/// guarantees:
+///     - Once its internal "count" reaches zero, no legal action on the object
+///       can further change the value of "count".
+///     - When `Wait()` returns, it is legal to destroy the `BlockingCounter`.
+///     - When `Wait()` returns, the number of calls to `DecrementCount()` on
+///       this blocking counter exactly equals `initial_count`.
+///
+/// Example:
+/// @code
+///     BlockingCounter bcount(N);         // there are N items of work
+///     ... Allow worker threads to start.
+///     ... On completing each work item, workers do:
+///     ... bcount.DecrementCount();      // an item of work has been completed
+///
+///     bcount.Wait();                    // wait for all work to be complete
+/// @endcode
 class BlockingCounter {
  public:
+  /// Constructs a blocking counter with an initial count.
+  ///
+  /// @param initial_count The non-negative number of `DecrementCount()` calls
+  ///   required before `Wait()` unblocks.
   explicit BlockingCounter(int initial_count);
 
-  BlockingCounter(const BlockingCounter&) = delete;
-  BlockingCounter& operator=(const BlockingCounter&) = delete;
+  /// Deleted copy constructor; `BlockingCounter` is not copyable.
+  BlockingCounter(const BlockingCounter& other) = delete;
 
-  // BlockingCounter::DecrementCount()
-  //
-  // Decrements the counter's "count" by one, and return "count == 0". This
-  // function requires that "count != 0" when it is called.
-  //
-  // Memory ordering: For any threads X and Y, any action taken by X
-  // before it calls `DecrementCount()` is visible to thread Y after
-  // Y's call to `DecrementCount()`, provided Y's call returns `true`.
+  /// Deleted copy assignment; `BlockingCounter` is not copyable.
+  BlockingCounter& operator=(const BlockingCounter& other) = delete;
+
+  /// Decrements the counter by one.
+  ///
+  /// Decrements the counter's "count" by one, and returns "count == 0". This
+  /// function requires that "count != 0" when it is called.
+  ///
+  /// Memory ordering: For any threads X and Y, any action taken by X
+  /// before it calls `DecrementCount()` is visible to thread Y after
+  /// Y's call to `DecrementCount()`, provided Y's call returns `true`.
+  ///
+  /// @return `true` if the counter reached zero as a result of this call.
   bool DecrementCount();
 
-  // BlockingCounter::Wait()
-  //
-  // Blocks until the counter reaches zero. This function may be called at most
-  // once. On return, `DecrementCount()` will have been called "initial_count"
-  // times and the blocking counter may be destroyed.
-  //
-  // Memory ordering: For any threads X and Y, any action taken by X
-  // before X calls `DecrementCount()` is visible to Y after Y returns
-  // from `Wait()`.
+  /// Blocks until the counter reaches zero.
+  ///
+  /// Blocks until the counter reaches zero. This function may be called at most
+  /// once. On return, `DecrementCount()` will have been called "initial_count"
+  /// times and the blocking counter may be destroyed.
+  ///
+  /// Memory ordering: For any threads X and Y, any action taken by X
+  /// before X calls `DecrementCount()` is visible to Y after Y returns
+  /// from `Wait()`.
   void Wait();
 
  private:

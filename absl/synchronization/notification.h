@@ -60,21 +60,57 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// -----------------------------------------------------------------------------
-// Notification
-// -----------------------------------------------------------------------------
+/// Lets threads wait for a single occurrence of a single event.
+///
+/// The `Notification` object maintains a private boolean "notified" state that
+/// transitions to `true` at most once. The `Notification` class provides the
+/// following primary member functions:
+///   * `HasBeenNotified()` to query its state
+///   * `WaitForNotification*()` to have threads wait until the "notified" state
+///      is `true`.
+///   * `Notify()` to set the notification's "notified" state to `true` and
+///     notify all waiting threads that the event has occurred.
+///     This method may only be called once.
+///
+/// Note that while `Notify()` may only be called once, it is perfectly valid to
+/// call any of the `WaitForNotification*()` methods multiple times, from
+/// multiple threads -- even after the notification's "notified" state has been
+/// set -- in which case those methods will immediately return.
+///
+/// Note that the lifetime of a `Notification` requires careful consideration;
+/// it might not be safe to destroy a notification after calling `Notify()` since
+/// it is still legal for other threads to call `WaitForNotification*()` methods
+/// on the notification. However, observers responding to a "notified" state of
+/// `true` can safely delete the notification without interfering with the call
+/// to `Notify()` in the other thread.
+///
+/// Memory ordering: For any threads X and Y, if X calls `Notify()`, then any
+/// action taken by X before it calls `Notify()` is visible to thread Y after:
+///  * Y returns from `WaitForNotification()`, or
+///  * Y receives a `true` return value from either `HasBeenNotified()` or
+///    `WaitForNotificationWithTimeout()`.
 class Notification {
  public:
-  // Initializes the "notified" state to unnotified.
+  /// Constructs a notification with an unnotified "notified" state.
   Notification() : notified_yet_(false) {}
+
+  /// Constructs a notification with an explicit initial "notified" state.
+  ///
+  /// @param prenotify The initial value of the "notified" state.
   explicit Notification(bool prenotify) : notified_yet_(prenotify) {}
-  Notification(const Notification&) = delete;
-  Notification& operator=(const Notification&) = delete;
+
+  /// Deleted copy constructor; `Notification` is not copyable.
+  Notification(const Notification& other) = delete;
+
+  /// Deleted copy assignment; `Notification` is not copyable.
+  Notification& operator=(const Notification& other) = delete;
+
+  /// Destroys the notification.
   ~Notification();
 
-  // Notification::HasBeenNotified()
-  //
-  // Returns the value of the notification's internal "notified" state.
+  /// Queries the notification's "notified" state.
+  ///
+  /// @return The value of the notification's internal "notified" state.
   [[nodiscard]] bool HasBeenNotified() const {
     if (HasBeenNotifiedInternal(&this->notified_yet_)) {
       base_internal::TraceObserved(this, TraceObjectKind());
@@ -83,33 +119,39 @@ class Notification {
     return false;
   }
 
-  // Notification::WaitForNotification()
-  //
-  // Blocks the calling thread until the notification's "notified" state is
-  // `true`. Note that if `Notify()` has been previously called on this
-  // notification, this function will immediately return.
+  /// Blocks the calling thread until the notification is notified.
+  ///
+  /// Blocks the calling thread until the notification's "notified" state is
+  /// `true`. Note that if `Notify()` has been previously called on this
+  /// notification, this function will immediately return.
   void WaitForNotification() const;
 
-  // Notification::WaitForNotificationWithTimeout()
-  //
-  // Blocks until either the notification's "notified" state is `true` (which
-  // may occur immediately) or the timeout has elapsed, returning the value of
-  // its "notified" state in either case.
+  /// Blocks until the notification is notified or a timeout elapses.
+  ///
+  /// Blocks until either the notification's "notified" state is `true` (which
+  /// may occur immediately) or the timeout has elapsed, returning the value of
+  /// its "notified" state in either case.
+  ///
+  /// @param timeout The maximum duration to wait for the notification.
+  /// @return The value of the "notified" state when the call returns.
   bool WaitForNotificationWithTimeout(absl::Duration timeout) const;
 
-  // Notification::WaitForNotificationWithDeadline()
-  //
-  // Blocks until either the notification's "notified" state is `true` (which
-  // may occur immediately) or the deadline has expired, returning the value of
-  // its "notified" state in either case.
+  /// Blocks until the notification is notified or a deadline expires.
+  ///
+  /// Blocks until either the notification's "notified" state is `true` (which
+  /// may occur immediately) or the deadline has expired, returning the value of
+  /// its "notified" state in either case.
+  ///
+  /// @param deadline The absolute time past which to stop waiting.
+  /// @return The value of the "notified" state when the call returns.
   bool WaitForNotificationWithDeadline(absl::Time deadline) const;
 
-  // Notification::Notify()
-  //
-  // Sets the "notified" state of this notification to `true` and wakes waiting
-  // threads. Note: do not call `Notify()` multiple times on the same
-  // `Notification`; calling `Notify()` more than once on the same notification
-  // results in undefined behavior.
+  /// Sets the "notified" state to `true` and wakes waiting threads.
+  ///
+  /// Sets the "notified" state of this notification to `true` and wakes waiting
+  /// threads. Note: do not call `Notify()` multiple times on the same
+  /// `Notification`; calling `Notify()` more than once on the same notification
+  /// results in undefined behavior.
   void Notify();
 
  private:

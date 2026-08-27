@@ -28,29 +28,48 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::bernoulli_distribution is a drop in replacement for
-// std::bernoulli_distribution. It guarantees that (given a perfect
-// UniformRandomBitGenerator) the acceptance probability is *exactly* equal to
-// the given double.
-//
-// The implementation assumes that double is IEEE754
+/// A drop in replacement for `std::bernoulli_distribution`.
+///
+/// It guarantees that (given a perfect UniformRandomBitGenerator) the
+/// acceptance probability is *exactly* equal to the given double.
+///
+/// The implementation assumes that double is IEEE754.
 class bernoulli_distribution {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = bool;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = bernoulli_distribution;
 
+    /// Constructs the parameter set from the acceptance probability.
+    ///
+    /// @param p The probability of producing `true`.
     explicit param_type(double p = 0.5) : prob_(p) {
       assert(p >= 0.0 && p <= 1.0);
     }
 
+    /// Returns the acceptance probability.
+    ///
+    /// @return The probability of producing `true`.
     double p() const { return prob_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param p1 The first parameter set to compare.
+    /// @param p2 The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& p1, const param_type& p2) {
       return p1.p() == p2.p();
     }
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param p1 The first parameter set to compare.
+    /// @param p2 The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& p1, const param_type& p2) {
       return p1.p() != p2.p();
     }
@@ -59,39 +78,82 @@ class bernoulli_distribution {
     double prob_;
   };
 
+  /// Constructs a distribution with acceptance probability 0.5.
   bernoulli_distribution() : bernoulli_distribution(0.5) {}
 
+  /// Constructs a distribution with the given acceptance probability.
+  ///
+  /// @param p The probability of producing `true`.
   explicit bernoulli_distribution(double p) : param_(p) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit bernoulli_distribution(param_type p) : param_(p) {}
 
-  // no-op
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
+  /// Generates a random boolean value.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random boolean value.
   template <typename URBG>
   bool operator()(URBG& g) {  // NOLINT(runtime/references)
     return Generate(param_.p(), g);
   }
 
+  /// Generates a random boolean value using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param param The parameter set to use for this call.
+  /// @return A random boolean value.
   template <typename URBG>
   bool operator()(URBG& g,  // NOLINT(runtime/references)
                   const param_type& param) {
     return Generate(param.p(), g);
   }
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param param The new parameter set.
   void param(const param_type& param) { param_ = param; }
 
+  /// Returns the acceptance probability.
+  ///
+  /// @return The probability of producing `true`.
   double p() const { return param_.p(); }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return `false`.
   result_type(min)() const { return false; }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return `true`.
   result_type(max)() const { return true; }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param d1 The first distribution to compare.
+  /// @param d2 The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const bernoulli_distribution& d1,
                          const bernoulli_distribution& d2) {
     return d1.param_ == d2.param_;
   }
 
+  /// Compares two distributions for inequality.
+  ///
+  /// @param d1 The first distribution to compare.
+  /// @param d2 The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const bernoulli_distribution& d1,
                          const bernoulli_distribution& d2) {
     return d1.param_ != d2.param_;
@@ -106,6 +168,11 @@ class bernoulli_distribution {
   param_type param_;
 };
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -116,6 +183,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,  // NOLINT(runtime/references)

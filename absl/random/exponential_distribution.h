@@ -32,29 +32,48 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::exponential_distribution:
-// Generates a number conforming to an exponential distribution and is
-// equivalent to the standard [rand.dist.pois.exp] distribution.
+/// Generates a number conforming to an exponential distribution.
+///
+/// This is equivalent to the standard [rand.dist.pois.exp] distribution.
 template <typename RealType = double>
 class exponential_distribution {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = RealType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = exponential_distribution;
 
+    /// Constructs the parameter set from the rate parameter.
+    ///
+    /// @param lambda The rate parameter.
     explicit param_type(result_type lambda = 1) : lambda_(lambda) {
       assert(lambda > 0);
       neg_inv_lambda_ = -result_type(1) / lambda_;
     }
 
+    /// Returns the rate parameter.
+    ///
+    /// @return The rate parameter.
     result_type lambda() const { return lambda_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.lambda_ == b.lambda_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -71,38 +90,81 @@ class exponential_distribution {
         "using a floating-point type.");
   };
 
+  /// Constructs a distribution with rate parameter 1.
   exponential_distribution() : exponential_distribution(1) {}
 
+  /// Constructs a distribution with the given rate parameter.
+  ///
+  /// @param lambda The rate parameter.
   explicit exponential_distribution(result_type lambda) : param_(lambda) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param p The parameter set.
   explicit exponential_distribution(const param_type& p) : param_(p) {}
 
+  /// Resets the internal state of the distribution.
+  ///
+  /// This is a no-op for this distribution.
   void reset() {}
 
-  // Generating functions
+  /// Generates a random value.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @return A random value drawn from the distribution.
   template <typename URBG>
   result_type operator()(URBG& g) {  // NOLINT(runtime/references)
     return (*this)(g, param_);
   }
 
+  /// Generates a random value using the given parameter set.
+  ///
+  /// @param g The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random value drawn from the distribution.
   template <typename URBG>
   result_type operator()(URBG& g,  // NOLINT(runtime/references)
                          const param_type& p);
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param p The new parameter set.
   void param(const param_type& p) { param_ = p; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return `0`.
   result_type(min)() const { return 0; }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return Positive infinity.
   result_type(max)() const {
     return std::numeric_limits<result_type>::infinity();
   }
 
+  /// Returns the rate parameter.
+  ///
+  /// @return The rate parameter.
   result_type lambda() const { return param_.lambda(); }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const exponential_distribution& a,
                          const exponential_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const exponential_distribution& a,
                          const exponential_distribution& b) {
     return a.param_ != b.param_;
@@ -136,6 +198,11 @@ exponential_distribution<RealType>::operator()(
   return p.neg_inv_lambda_ * std::log1p(u);
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -146,6 +213,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,    // NOLINT(runtime/references)

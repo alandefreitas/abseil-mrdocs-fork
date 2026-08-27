@@ -49,28 +49,33 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::uniform_real_distribution<T>
-//
-// This distribution produces random floating-point values uniformly distributed
-// over the half-open interval [a, b).
-//
-// Example:
-//
-//   absl::BitGen gen;
-//
-//   // Use the distribution to produce a value between 0.0 (inclusive)
-//   // and 1.0 (exclusive).
-//   double value = absl::uniform_real_distribution<double>(0, 1)(gen);
-//
+/// This distribution produces random floating-point values uniformly
+/// distributed over the half-open interval [a, b).
+///
+/// Example:
+///
+///   absl::BitGen gen;
+///
+///   // Use the distribution to produce a value between 0.0 (inclusive)
+///   // and 1.0 (exclusive).
+///   double value = absl::uniform_real_distribution<double>(0, 1)(gen);
+///
 template <typename RealType = double>
 class uniform_real_distribution {
  public:
+  /// The type of the values produced by the distribution.
   using result_type = RealType;
 
+  /// The parameter set of the distribution.
   class param_type {
    public:
+    /// The distribution type associated with this parameter set.
     using distribution_type = uniform_real_distribution;
 
+    /// Constructs the parameter set from the interval bounds.
+    ///
+    /// @param lo The lower bound of the half-open interval.
+    /// @param hi The upper bound of the half-open interval.
     explicit param_type(result_type lo = 0, result_type hi = 1)
         : lo_(lo), hi_(hi), range_(hi - lo) {
       // [rand.dist.uni.real] preconditions 2 & 3
@@ -83,13 +88,29 @@ class uniform_real_distribution {
       assert(range_ <= (std::numeric_limits<result_type>::max)());
     }
 
+    /// Returns the lower bound of the interval.
+    ///
+    /// @return The lower bound `a`.
     result_type a() const { return lo_; }
+    /// Returns the upper bound of the interval.
+    ///
+    /// @return The upper bound `b`.
     result_type b() const { return hi_; }
 
+    /// Compares two parameter sets for equality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are equal.
     friend bool operator==(const param_type& a, const param_type& b) {
       return a.lo_ == b.lo_ && a.hi_ == b.hi_;
     }
 
+    /// Compares two parameter sets for inequality.
+    ///
+    /// @param a The first parameter set to compare.
+    /// @param b The second parameter set to compare.
+    /// @return `true` if the parameter sets are not equal.
     friend bool operator!=(const param_type& a, const param_type& b) {
       return !(a == b);
     }
@@ -103,41 +124,86 @@ class uniform_real_distribution {
                   "parameterized using a floating-point type.");
   };
 
+  /// Constructs a distribution over the half-open interval [0, 1).
   uniform_real_distribution() : uniform_real_distribution(0) {}
 
+  /// Constructs a distribution over the half-open interval [lo, hi).
+  ///
+  /// @param lo The lower bound of the half-open interval.
+  /// @param hi The upper bound of the half-open interval.
   explicit uniform_real_distribution(result_type lo, result_type hi = 1)
       : param_(lo, hi) {}
 
+  /// Constructs a distribution from the given parameter set.
+  ///
+  /// @param param The parameter set.
   explicit uniform_real_distribution(const param_type& param) : param_(param) {}
 
-  // uniform_real_distribution<T>::reset()
-  //
-  // Resets the uniform real distribution. Note that this function has no effect
-  // because the distribution already produces independent values.
+  /// Resets the uniform real distribution.
+  ///
+  /// Note that this function has no effect because the distribution already
+  /// produces independent values.
   void reset() {}
 
+  /// Generates a random value in the interval [a, b).
+  ///
+  /// @param gen The uniform random bit generator.
+  /// @return A random value in the half-open interval [a, b).
   template <typename URBG>
   result_type operator()(URBG& gen) {  // NOLINT(runtime/references)
     return operator()(gen, param_);
   }
 
+  /// Generates a random value using the given parameter set.
+  ///
+  /// @param gen The uniform random bit generator.
+  /// @param p The parameter set to use for this call.
+  /// @return A random value in the half-open interval [a, b).
   template <typename URBG>
   result_type operator()(URBG& gen,  // NOLINT(runtime/references)
                          const param_type& p);
 
+  /// Returns the lower bound of the interval.
+  ///
+  /// @return The lower bound `a`.
   result_type a() const { return param_.a(); }
+  /// Returns the upper bound of the interval.
+  ///
+  /// @return The upper bound `b`.
   result_type b() const { return param_.b(); }
 
+  /// Returns the parameter set of the distribution.
+  ///
+  /// @return The current parameter set.
   param_type param() const { return param_; }
+  /// Sets the parameter set of the distribution.
+  ///
+  /// @param params The new parameter set.
   void param(const param_type& params) { param_ = params; }
 
+  /// Returns the smallest value the distribution can produce.
+  ///
+  /// @return The lower bound `a`.
   result_type(min)() const { return a(); }
+  /// Returns the largest value the distribution can produce.
+  ///
+  /// @return The upper bound `b`.
   result_type(max)() const { return b(); }
 
+  /// Compares two distributions for equality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have equal parameter sets.
   friend bool operator==(const uniform_real_distribution& a,
                          const uniform_real_distribution& b) {
     return a.param_ == b.param_;
   }
+  /// Compares two distributions for inequality.
+  ///
+  /// @param a The first distribution to compare.
+  /// @param b The second distribution to compare.
+  /// @return `true` if the distributions have differing parameter sets.
   friend bool operator!=(const uniform_real_distribution& a,
                          const uniform_real_distribution& b) {
     return a.param_ != b.param_;
@@ -173,6 +239,11 @@ uniform_real_distribution<RealType>::operator()(
   }
 }
 
+/// Writes the distribution to an output stream.
+///
+/// @param os The output stream to write to.
+/// @param x The distribution to write.
+/// @return A reference to the output stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,  // NOLINT(runtime/references)
@@ -183,6 +254,11 @@ std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 
+/// Reads the distribution from an input stream.
+///
+/// @param is The input stream to read from.
+/// @param x The distribution to read into.
+/// @return A reference to the input stream.
 template <typename CharT, typename Traits, typename RealType>
 std::basic_istream<CharT, Traits>& operator>>(
     std::basic_istream<CharT, Traits>& is,     // NOLINT(runtime/references)

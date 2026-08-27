@@ -41,98 +41,98 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// Moves data into the L1 cache before it is read, or "prefetches" it.
-//
-// The value of `addr` is the address of the memory to prefetch. If
-// the target and compiler support it, data prefetch instructions are
-// generated. If the prefetch is done some time before the memory is
-// read, it may be in the cache by the time the read occurs.
-//
-// This method prefetches data with the highest degree of temporal locality;
-// data is prefetched where possible into all levels of the cache.
-//
-// Incorrect or gratuitous use of this function can degrade performance.
-// Use this function only when representative benchmarks show an improvement.
-//
-// Example:
-//
-//  // Computes incremental checksum for `data`.
-//  int ComputeChecksum(int sum, absl::string_view data);
-//
-//  // Computes cumulative checksum for all values in `data`
-//  int ComputeChecksum(absl::Span<const std::string> data) {
-//    int sum = 0;
-//    auto it = data.begin();
-//    auto pit = data.begin();
-//    auto end = data.end();
-//    for (int dist = 8; dist > 0 && pit != data.end(); --dist, ++pit) {
-//      absl::PrefetchToLocalCache(pit->data());
-//    }
-//    for (; pit != end; ++pit, ++it) {
-//      sum = ComputeChecksum(sum, *it);
-//      absl::PrefetchToLocalCache(pit->data());
-//    }
-//    for (; it != end; ++it) {
-//      sum = ComputeChecksum(sum, *it);
-//    }
-//    return sum;
-//  }
-//
+/// Moves data into the L1 cache before it is read, or "prefetches" it.
+///
+/// The value of `addr` is the address of the memory to prefetch. If
+/// the target and compiler support it, data prefetch instructions are
+/// generated. If the prefetch is done some time before the memory is
+/// read, it may be in the cache by the time the read occurs.
+///
+/// This method prefetches data with the highest degree of temporal locality;
+/// data is prefetched where possible into all levels of the cache.
+///
+/// Incorrect or gratuitous use of this function can degrade performance.
+/// Use this function only when representative benchmarks show an improvement.
+///
+/// Example:
+///
+///  // Computes incremental checksum for `data`.
+///  int ComputeChecksum(int sum, absl::string_view data);
+///
+///  // Computes cumulative checksum for all values in `data`
+///  int ComputeChecksum(absl::Span<const std::string> data) {
+///    int sum = 0;
+///    auto it = data.begin();
+///    auto pit = data.begin();
+///    auto end = data.end();
+///    for (int dist = 8; dist > 0 && pit != data.end(); --dist, ++pit) {
+///      absl::PrefetchToLocalCache(pit->data());
+///    }
+///    for (; pit != end; ++pit, ++it) {
+///      sum = ComputeChecksum(sum, *it);
+///      absl::PrefetchToLocalCache(pit->data());
+///    }
+///    for (; it != end; ++it) {
+///      sum = ComputeChecksum(sum, *it);
+///    }
+///    return sum;
+///  }
+/// @param addr The address of the memory to prefetch.
 void PrefetchToLocalCache(const void* addr);
 
-// Moves data into the L1 cache before it is read, or "prefetches" it.
-//
-// This function is identical to `PrefetchToLocalCache()` except that it has
-// non-temporal locality: the fetched data should not be left in any of the
-// cache tiers. This is useful for cases where the data is used only once /
-// short term, for example, invoking a destructor on an object.
-//
-// Incorrect or gratuitous use of this function can degrade performance.
-// Use this function only when representative benchmarks show an improvement.
-//
-// Example:
-//
-//  template <typename Iterator>
-//  void DestroyPointers(Iterator begin, Iterator end) {
-//    size_t distance = std::min(8U, bars.size());
-//
-//    int dist = 8;
-//    auto prefetch_it = begin;
-//    while (prefetch_it != end && --dist;) {
-//      absl::PrefetchToLocalCacheNta(*prefetch_it++);
-//    }
-//    while (prefetch_it != end) {
-//      delete *begin++;
-//      absl::PrefetchToLocalCacheNta(*prefetch_it++);
-//    }
-//    while (begin != end) {
-//      delete *begin++;
-//    }
-//  }
-//
+/// Moves data into the L1 cache before it is read, or "prefetches" it.
+///
+/// This function is identical to `PrefetchToLocalCache()` except that it has
+/// non-temporal locality: the fetched data should not be left in any of the
+/// cache tiers. This is useful for cases where the data is used only once /
+/// short term, for example, invoking a destructor on an object.
+///
+/// Incorrect or gratuitous use of this function can degrade performance.
+/// Use this function only when representative benchmarks show an improvement.
+///
+/// Example:
+///
+///  template <typename Iterator>
+///  void DestroyPointers(Iterator begin, Iterator end) {
+///    size_t distance = std::min(8U, bars.size());
+///
+///    int dist = 8;
+///    auto prefetch_it = begin;
+///    while (prefetch_it != end && --dist;) {
+///      absl::PrefetchToLocalCacheNta(*prefetch_it++);
+///    }
+///    while (prefetch_it != end) {
+///      delete *begin++;
+///      absl::PrefetchToLocalCacheNta(*prefetch_it++);
+///    }
+///    while (begin != end) {
+///      delete *begin++;
+///    }
+///  }
+/// @param addr The address of the memory to prefetch.
 void PrefetchToLocalCacheNta(const void* addr);
 
-// Moves data into the L1 cache with the intent to modify it.
-//
-// This function is similar to `PrefetchToLocalCache()` except that it
-// prefetches cachelines with an 'intent to modify' This typically includes
-// invalidating cache entries for this address in all other cache tiers, and an
-// exclusive access intent.
-//
-// Incorrect or gratuitous use of this function can degrade performance. As this
-// function can invalidate cached cachelines on other caches and computer cores,
-// incorrect usage of this function can have an even greater negative impact
-// than incorrect regular prefetches.
-// Use this function only when representative benchmarks show an improvement.
-//
-// Example:
-//
-//  void* Arena::Allocate(size_t size) {
-//    void* ptr = AllocateBlock(size);
-//    absl::PrefetchToLocalCacheForWrite(ptr);
-//    return ptr;
-//  }
-//
+/// Moves data into the L1 cache with the intent to modify it.
+///
+/// This function is similar to `PrefetchToLocalCache()` except that it
+/// prefetches cachelines with an 'intent to modify' This typically includes
+/// invalidating cache entries for this address in all other cache tiers, and an
+/// exclusive access intent.
+///
+/// Incorrect or gratuitous use of this function can degrade performance. As this
+/// function can invalidate cached cachelines on other caches and computer cores,
+/// incorrect usage of this function can have an even greater negative impact
+/// than incorrect regular prefetches.
+/// Use this function only when representative benchmarks show an improvement.
+///
+/// Example:
+///
+///  void* Arena::Allocate(size_t size) {
+///    void* ptr = AllocateBlock(size);
+///    absl::PrefetchToLocalCacheForWrite(ptr);
+///    return ptr;
+///  }
+/// @param addr The address of the memory to prefetch.
 void PrefetchToLocalCacheForWrite(const void* addr);
 
 #if ABSL_HAVE_BUILTIN(__builtin_prefetch) || defined(__GNUC__)

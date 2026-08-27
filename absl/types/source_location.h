@@ -58,8 +58,13 @@
 // config.h/options.h, similar to std::string_view/variant/etc.
 #if defined(ABSL_USES_STD_SOURCE_LOCATION) && \
     defined(ABSL_HAVE_STD_SOURCE_LOCATION)
+// Abseil common types, utilities, and library components.
 namespace absl {
 ABSL_NAMESPACE_BEGIN
+/// Provides source-code location information for C++17 and later.
+///
+/// A view type (like `std::string_view`) that captures the file and line of a
+/// callsite. When `std::source_location` is available, it aliases that type.
 using SourceLocation = std::source_location;
 ABSL_NAMESPACE_END
 }  // namespace absl

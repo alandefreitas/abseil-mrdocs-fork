@@ -74,6 +74,12 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// A `std::optional`-like interface around a `T*`.
+///
+/// Similar to C++26's `std::optional<T&>`, but it also permits construction
+/// from rvalues. It makes it easier for functions to accept nullable object
+/// addresses, regardless of whether they point to temporaries. It is trivially
+/// copyable and destructible, so it should be passed by value.
 template <typename T>
 class optional_ref {
   template <typename U>
@@ -81,60 +87,81 @@ class optional_ref {
       std::enable_if_t<std::is_convertible_v<U*, T*>>;
 
  public:
+  /// The referenced value type.
   using value_type = T;
 
+  /// Constructs an empty `optional_ref`.
   constexpr optional_ref() : ptr_(nullptr) {}
+  /// Constructs an empty `optional_ref` from `std::nullopt`.
+  ///
+  /// @param input The `std::nullopt` tag.
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
-      std::nullopt_t)
+      std::nullopt_t input)
       : ptr_(nullptr) {}
 
-  // Constructor given a concrete value.
+  /// Constructs an `optional_ref` referring to a concrete value.
+  ///
+  /// @param input The value to refer to.
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
       T& input ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ptr_(std::addressof(input)) {}
 
-  // Constructors given an existing std::optional value.
-  // Templated on the input optional's type to avoid creating a temporary.
+  /// Constructs an `optional_ref` from a const `std::optional`.
+  ///
+  /// @param input The optional whose value (if any) is referred to.
   template <typename U, typename = EnableIfConvertibleFrom<const U>>
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
       const std::optional<U>& input ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ptr_(input.has_value() ? std::addressof(*input) : nullptr) {}
+  /// Constructs an `optional_ref` from a mutable `std::optional`.
+  ///
+  /// @param input The optional whose value (if any) is referred to.
   template <typename U, typename = EnableIfConvertibleFrom<U>>
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
       std::optional<U>& input ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ptr_(input.has_value() ? std::addressof(*input) : nullptr) {}
 
-  // Constructor given a T*, where nullptr indicates empty/absent.
+  /// Constructs an `optional_ref` from a pointer, where null means absent.
+  ///
+  /// @param input The pointer to refer to, or null for an empty reference.
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
       T* input ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ptr_(input) {}
 
-  // Don't allow naked nullptr as input, as this creates confusion in the case
-  // of optional_ref<T*>. Use std::nullopt instead to create an empty
-  // optional_ref.
+  /// Deleted to forbid a naked `nullptr`; use `std::nullopt` instead.
+  ///
+  /// @param input The `nullptr` literal.
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
-      std::nullptr_t) = delete;
+      std::nullptr_t input) = delete;
 
-  // Copying is allowed.
-  optional_ref(const optional_ref<T>&) = default;
-  // Assignment is not allowed.
-  optional_ref<T>& operator=(const optional_ref<T>&) = delete;
+  /// Copies an `optional_ref`.
+  ///
+  /// @param other The reference to copy.
+  optional_ref(const optional_ref<T>& other) = default;
+  /// Assignment is deleted; `optional_ref` is not assignable.
+  ///
+  /// @param other The reference that would be assigned from.
+  /// @return This declaration is deleted and cannot be called.
+  optional_ref<T>& operator=(const optional_ref<T>& other) = delete;
 
-  // Conversion from optional_ref<U> is allowed iff U* is convertible to T*.
-  // (Note this also allows non-const to const conversions.)
+  /// Converts from an `optional_ref<U>` when `U*` converts to `T*`.
+  ///
+  /// @param input The source reference to convert from.
   template <typename U, typename = EnableIfConvertibleFrom<U>>
   constexpr optional_ref(  // NOLINT(google-explicit-constructor)
       optional_ref<U> input)
       : ptr_(input.as_pointer()) {}
 
-  // Determines whether the `optional_ref` contains a value. Returns `false` if
-  // and only if `*this` is empty.
+  /// Determines whether the `optional_ref` contains a value.
+  ///
+  /// @return `false` if and only if `*this` is empty.
   constexpr bool has_value() const { return ptr_ != nullptr; }
 
-  // Returns a reference to an `optional_ref`s underlying value. The constness
-  // and lvalue/rvalue-ness of the `optional_ref` is preserved to the view of
-  // the `T` sub-object. Throws the same error as `std::optional`'s `value()`
-  // when the `optional_ref` is empty.
+  /// Returns a reference to the underlying value.
+  ///
+  /// Throws the same error as `std::optional::value()` when empty.
+  ///
+  /// @return A reference to the referenced value.
   constexpr T& value() const {
     return ABSL_PREDICT_TRUE(ptr_ != nullptr)
                ? *ptr_
@@ -146,7 +173,10 @@ class optional_ref {
                : ((void)std::optional<T>().value(), *ptr_);
   }
 
-  // Returns the value iff *this has a value, otherwise returns `default_value`.
+  /// Returns the value if present, otherwise `default_value`.
+  ///
+  /// @param default_value The value returned when `*this` is empty.
+  /// @return The referenced value, or `default_value` if empty.
   template <typename U>
   constexpr T value_or(U&& default_value) const {
     // Instantiate std::optional<T>::value_or(U) to trigger its static_asserts.
@@ -160,24 +190,30 @@ class optional_ref {
                            : static_cast<T>(std::forward<U>(default_value));
   }
 
-  // Accesses the underlying `T` value of an `optional_ref`. If the
-  // `optional_ref` is empty, behavior is undefined.
+  /// Accesses the underlying value; undefined behavior if empty.
+  ///
+  /// @return A reference to the referenced value.
   constexpr T& operator*() const {
     absl::base_internal::HardeningAssertNonNull(ptr_);
     return *ptr_;
   }
+  /// Accesses members of the underlying value; undefined behavior if empty.
+  ///
+  /// @return A pointer to the referenced value.
   constexpr T* operator->() const {
     absl::base_internal::HardeningAssertNonNull(ptr_);
     return ptr_;
   }
 
-  // Convenience function to represent the `optional_ref` as a `T*` pointer.
+  /// Represents the `optional_ref` as a `T*` pointer.
+  ///
+  /// @return The underlying pointer, or null if empty.
   constexpr T* as_pointer() const { return ptr_; }
-  // Convenience function to represent the `optional_ref` as an `optional`,
-  // which incurs a copy when the `optional_ref` is non-empty. The template type
-  // allows for implicit type conversion; example:
-  //   optional_ref<std::string> a = ...;
-  //   std::optional<std::string_view> b = a.as_optional<std::string_view>();
+  /// Represents the `optional_ref` as a `std::optional`.
+  ///
+  /// Incurs a copy when the `optional_ref` is non-empty.
+  ///
+  /// @return A `std::optional<U>` holding a copy of the value, or `nullopt`.
   template <typename U = std::decay_t<T>>
   constexpr std::optional<U> as_optional() const {
     if (ptr_ == nullptr) return std::nullopt;
@@ -197,16 +233,21 @@ class optional_ref {
 
 // Template type deduction guides:
 
+/// Deduces `optional_ref<const T>` from a const lvalue.
 template <typename T>
 optional_ref(const T&) -> optional_ref<const T>;
+/// Deduces `optional_ref<T>` from a mutable lvalue.
 template <typename T>
 optional_ref(T&) -> optional_ref<T>;
 
+/// Deduces `optional_ref<const T>` from a const `std::optional`.
 template <typename T>
 optional_ref(const std::optional<T>&) -> optional_ref<const T>;
+/// Deduces `optional_ref<T>` from a mutable `std::optional`.
 template <typename T>
 optional_ref(std::optional<T>&) -> optional_ref<T>;
 
+/// Deduces `optional_ref<T>` from a pointer.
 template <typename T>
 optional_ref(T*) -> optional_ref<T>;
 
@@ -229,20 +270,40 @@ using enable_if_equality_comparable_t = std::enable_if_t<std::is_convertible_v<
 
 // Compare an optional referenced value to std::nullopt.
 
+/// Tests whether an `optional_ref` is empty.
+///
+/// @param a The reference to test.
+/// @param b The `std::nullopt` tag.
+/// @return `true` if `a` is empty.
 template <typename T>
-constexpr bool operator==(optional_ref<T> a, std::nullopt_t) {
+constexpr bool operator==(optional_ref<T> a, std::nullopt_t b) {
   return !a.has_value();
 }
+/// Tests whether an `optional_ref` is empty.
+///
+/// @param a The `std::nullopt` tag.
+/// @param b The reference to test.
+/// @return `true` if `b` is empty.
 template <typename T>
-constexpr bool operator==(std::nullopt_t, optional_ref<T> b) {
+constexpr bool operator==(std::nullopt_t a, optional_ref<T> b) {
   return !b.has_value();
 }
+/// Tests whether an `optional_ref` holds a value.
+///
+/// @param a The reference to test.
+/// @param b The `std::nullopt` tag.
+/// @return `true` if `a` holds a value.
 template <typename T>
-constexpr bool operator!=(optional_ref<T> a, std::nullopt_t) {
+constexpr bool operator!=(optional_ref<T> a, std::nullopt_t b) {
   return a.has_value();
 }
+/// Tests whether an `optional_ref` holds a value.
+///
+/// @param a The `std::nullopt` tag.
+/// @param b The reference to test.
+/// @return `true` if `b` holds a value.
 template <typename T>
-constexpr bool operator!=(std::nullopt_t, optional_ref<T> b) {
+constexpr bool operator!=(std::nullopt_t a, optional_ref<T> b) {
   return b.has_value();
 }
 
@@ -250,6 +311,11 @@ constexpr bool operator!=(std::nullopt_t, optional_ref<T> b) {
 // contained `ptr_`s are equal. If the caller wants "shallow" reference equality
 // semantics, they should use `as_pointer()` explicitly.
 
+/// Compares the referenced values of two `optional_ref`s.
+///
+/// @param a The left operand.
+/// @param b The right operand.
+/// @return `true` if both are empty or both hold equal values.
 template <typename T, typename U>
 constexpr bool operator==(optional_ref<T> a, optional_ref<U> b) {
   return a.has_value() ? *a == b : !b.has_value();
@@ -257,12 +323,22 @@ constexpr bool operator==(optional_ref<T> a, optional_ref<U> b) {
 
 // Compare an optional referenced value to a non-optional value.
 
+/// Compares a value to the referenced value of an `optional_ref`.
+///
+/// @param a The value to compare.
+/// @param b The reference to compare against.
+/// @return `true` if `b` holds a value equal to `a`.
 template <
     typename T, typename U,
     typename = optional_ref_internal::enable_if_equality_comparable_t<T, U>>
 constexpr bool operator==(const T& a, optional_ref<U> b) {
   return b.has_value() && a == *b;
 }
+/// Compares the referenced value of an `optional_ref` to a value.
+///
+/// @param a The reference to compare.
+/// @param b The value to compare against.
+/// @return `true` if `a` holds a value equal to `b`.
 template <
     typename T, typename U,
     typename = optional_ref_internal::enable_if_equality_comparable_t<T, U>>
@@ -272,16 +348,31 @@ constexpr bool operator==(optional_ref<T> a, const U& b) {
 
 // Inequality operators, as above.
 
+/// Tests whether two `optional_ref`s differ.
+///
+/// @param a The left operand.
+/// @param b The right operand.
+/// @return `true` if the operands are not equal.
 template <typename T, typename U>
 constexpr bool operator!=(optional_ref<T> a, optional_ref<U> b) {
   return !(a == b);
 }
+/// Tests whether an `optional_ref` differs from a value.
+///
+/// @param a The reference to compare.
+/// @param b The value to compare against.
+/// @return `true` if `a` does not hold a value equal to `b`.
 template <
     typename T, typename U,
     typename = optional_ref_internal::enable_if_equality_comparable_t<T, U>>
 constexpr bool operator!=(optional_ref<T> a, const U& b) {
   return !(a == b);
 }
+/// Tests whether a value differs from an `optional_ref`.
+///
+/// @param a The value to compare.
+/// @param b The reference to compare against.
+/// @return `true` if `b` does not hold a value equal to `a`.
 template <
     typename T, typename U,
     typename = optional_ref_internal::enable_if_equality_comparable_t<T, U>>

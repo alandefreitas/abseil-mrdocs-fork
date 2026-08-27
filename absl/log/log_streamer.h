@@ -41,44 +41,43 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// LogStreamer
-//
-// Although you can stream into `LOG(INFO)`, you can't pass it into a function
-// that takes a `std::ostream` parameter. `LogStreamer::stream()` provides a
-// `std::ostream` that buffers everything that's streamed in.  The buffer's
-// contents are logged as if by `LOG` when the `LogStreamer` is destroyed.
-// If nothing is streamed in, an empty message is logged.  If the specified
-// severity is `absl::LogSeverity::kFatal`, the program will be terminated when
-// the `LogStreamer` is destroyed regardless of whether any data were streamed
-// in.
-//
-// Factory functions corresponding to the `absl::LogSeverity` enumerators
-// are provided for convenience; if the desired severity is variable, invoke the
-// constructor directly.
-//
-// LogStreamer is movable, but not copyable.
-//
-// Examples:
-//
-//   ShaveYakAndWriteToStream(
-//       yak, absl::LogInfoStreamer(__FILE__, __LINE__).stream());
-//
-//   {
-//     // This logs a single line containing data streamed by all three function
-//     // calls.
-//     absl::LogStreamer streamer(absl::LogSeverity::kInfo, __FILE__, __LINE__);
-//     ShaveYakAndWriteToStream(yak1, streamer.stream());
-//     streamer.stream() << " ";
-//     ShaveYakAndWriteToStream(yak2, streamer.stream());
-//     streamer.stream() << " ";
-//     ShaveYakAndWriteToStreamPointer(yak3, &streamer.stream());
-//   }
+/// Although you can stream into `LOG(INFO)`, you can't pass it into a
+/// function that takes a `std::ostream` parameter. `LogStreamer::stream()`
+/// provides a `std::ostream` that buffers everything that's streamed in.
+/// The buffer's contents are logged as if by `LOG` when the `LogStreamer`
+/// is destroyed. If nothing is streamed in, an empty message is logged.  If
+/// the specified severity is `absl::LogSeverity::kFatal`, the program will
+/// be terminated when the `LogStreamer` is destroyed regardless of whether
+/// any data were streamed in.
+///
+/// Factory functions corresponding to the `absl::LogSeverity` enumerators
+/// are provided for convenience; if the desired severity is variable,
+/// invoke the constructor directly.
+///
+/// LogStreamer is movable, but not copyable.
+///
+/// Examples:
+///
+///   ShaveYakAndWriteToStream(
+///       yak, absl::LogInfoStreamer(__FILE__, __LINE__).stream());
+///
+///   {
+///     // This logs a single line containing data streamed by all three function
+///     // calls.
+///     absl::LogStreamer streamer(absl::LogSeverity::kInfo, __FILE__, __LINE__);
+///     ShaveYakAndWriteToStream(yak1, streamer.stream());
+///     streamer.stream() << " ";
+///     ShaveYakAndWriteToStream(yak2, streamer.stream());
+///     streamer.stream() << " ";
+///     ShaveYakAndWriteToStreamPointer(yak3, &streamer.stream());
+///   }
 class LogStreamer final {
  public:
-  // LogStreamer::LogStreamer()
-  //
-  // Creates a LogStreamer with a given `severity` that will log a message
-  // attributed to the given `file` and `line`.
+  /// Creates a LogStreamer with a given `severity` that will log a message
+  /// attributed to the given `file` and `line`.
+  /// @param severity The severity to log the buffered message at.
+  /// @param file The source file the message is attributed to.
+  /// @param line The source line the message is attributed to.
   explicit LogStreamer(absl::LogSeverity severity, absl::string_view file,
                        int line)
       : severity_(severity),
@@ -88,13 +87,20 @@ class LogStreamer final {
     // To match `LOG`'s defaults:
     stream_->setf(std::ios_base::showbase | std::ios_base::boolalpha);
   }
+  /// Creates a LogStreamer with a given `severity` that will log a message
+  /// attributed to the given source location.
+  /// @param severity The severity to log the buffered message at.
+  /// @param loc The source location the message is attributed to.
   explicit LogStreamer(
       absl::LogSeverity severity,
       absl::SourceLocation loc = absl::SourceLocation::current())
       : LogStreamer(severity, loc.file_name(), static_cast<int>(loc.line())) {}
 
-  // A moved-from `absl::LogStreamer` does not `LOG` when destroyed,
-  // and a program that streams into one has undefined behavior.
+  /// Moves the state of `that` into this `LogStreamer`.
+  ///
+  /// A moved-from `absl::LogStreamer` does not `LOG` when destroyed,
+  /// and a program that streams into one has undefined behavior.
+  /// @param that The LogStreamer to move from.
   LogStreamer(LogStreamer&& that) noexcept
       : severity_(that.severity_),
         line_(that.line_),
@@ -104,6 +110,10 @@ class LogStreamer final {
     if (stream_.has_value()) stream_->str(&buf_);
     that.stream_.reset();
   }
+  /// Logs this LogStreamer's current buffered content, then moves the
+  /// state of `that` into this `LogStreamer`.
+  /// @param that The LogStreamer to move from.
+  /// @return A reference to this LogStreamer.
   LogStreamer& operator=(LogStreamer&& that) {
     ABSL_LOG_IF(LEVEL(severity_), stream_).AtLocation(file_, line_) << buf_;
     severity_ = that.severity_;
@@ -116,18 +126,15 @@ class LogStreamer final {
     return *this;
   }
 
-  // LogStreamer::~LogStreamer()
-  //
-  // Logs this LogStreamer's buffered content as if by LOG.
+  /// Logs this LogStreamer's buffered content as if by LOG.
   ~LogStreamer() {
     ABSL_LOG_IF(LEVEL(severity_), stream_.has_value()).AtLocation(file_, line_)
         << buf_;
   }
 
-  // LogStreamer::stream()
-  //
-  // Returns the `std::ostream` to use to write into this LogStreamer' internal
-  // buffer.
+  /// Returns the `std::ostream` to use to write into this LogStreamer's
+  /// internal buffer.
+  /// @return The output stream backed by this LogStreamer's buffer.
   std::ostream& stream() { return *stream_; }
 
  private:
@@ -140,63 +147,89 @@ class LogStreamer final {
   std::optional<absl::strings_internal::OStringStream> stream_;
 };
 
-// LogInfoStreamer()
-//
-// Returns a LogStreamer that writes at level LogSeverity::kInfo.
+/// Returns a LogStreamer that writes at level LogSeverity::kInfo.
+/// @param file The source file the message is attributed to.
+/// @param line The source line the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kInfo.
 inline LogStreamer LogInfoStreamer(absl::string_view file, int line) {
   return absl::LogStreamer(absl::LogSeverity::kInfo, file, line);
 }
 
-// LogWarningStreamer()
-//
-// Returns a LogStreamer that writes at level LogSeverity::kWarning.
+/// Returns a LogStreamer that writes at level LogSeverity::kWarning.
+/// @param file The source file the message is attributed to.
+/// @param line The source line the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kWarning.
 inline LogStreamer LogWarningStreamer(absl::string_view file, int line) {
   return absl::LogStreamer(absl::LogSeverity::kWarning, file, line);
 }
 
-// LogErrorStreamer()
-//
-// Returns a LogStreamer that writes at level LogSeverity::kError.
+/// Returns a LogStreamer that writes at level LogSeverity::kError.
+/// @param file The source file the message is attributed to.
+/// @param line The source line the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kError.
 inline LogStreamer LogErrorStreamer(absl::string_view file, int line) {
   return absl::LogStreamer(absl::LogSeverity::kError, file, line);
 }
 
-// LogFatalStreamer()
-//
-// Returns a LogStreamer that writes at level LogSeverity::kFatal.
-//
-// The program will be terminated when this `LogStreamer` is destroyed,
-// regardless of whether any data were streamed in.
+/// Returns a LogStreamer that writes at level LogSeverity::kFatal.
+///
+/// The program will be terminated when this `LogStreamer` is destroyed,
+/// regardless of whether any data were streamed in.
+/// @param file The source file the message is attributed to.
+/// @param line The source line the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kFatal.
 inline LogStreamer LogFatalStreamer(absl::string_view file, int line) {
   return absl::LogStreamer(absl::LogSeverity::kFatal, file, line);
 }
 
-// LogDebugFatalStreamer()
-//
-// Returns a LogStreamer that writes at level LogSeverity::kLogDebugFatal.
-//
-// In debug mode, the program will be terminated when this `LogStreamer` is
-// destroyed, regardless of whether any data were streamed in.
+/// Returns a LogStreamer that writes at level LogSeverity::kLogDebugFatal.
+///
+/// In debug mode, the program will be terminated when this `LogStreamer` is
+/// destroyed, regardless of whether any data were streamed in.
+/// @param file The source file the message is attributed to.
+/// @param line The source line the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kLogDebugFatal.
 inline LogStreamer LogDebugFatalStreamer(absl::string_view file, int line) {
   return absl::LogStreamer(absl::kLogDebugFatal, file, line);
 }
 
+/// Returns a LogStreamer that writes at level LogSeverity::kInfo.
+/// @param loc The source location the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kInfo.
 inline LogStreamer LogInfoStreamer(
     absl::SourceLocation loc = absl::SourceLocation::current()) {
   return absl::LogStreamer(absl::LogSeverity::kInfo, loc);
 }
+/// Returns a LogStreamer that writes at level LogSeverity::kWarning.
+/// @param loc The source location the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kWarning.
 inline LogStreamer LogWarningStreamer(
     absl::SourceLocation loc = absl::SourceLocation::current()) {
   return absl::LogStreamer(absl::LogSeverity::kWarning, loc);
 }
+/// Returns a LogStreamer that writes at level LogSeverity::kError.
+/// @param loc The source location the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kError.
 inline LogStreamer LogErrorStreamer(
     absl::SourceLocation loc = absl::SourceLocation::current()) {
   return absl::LogStreamer(absl::LogSeverity::kError, loc);
 }
+/// Returns a LogStreamer that writes at level LogSeverity::kFatal.
+///
+/// The program will be terminated when this `LogStreamer` is destroyed,
+/// regardless of whether any data were streamed in.
+/// @param loc The source location the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kFatal.
 inline LogStreamer LogFatalStreamer(
     absl::SourceLocation loc = absl::SourceLocation::current()) {
   return absl::LogStreamer(absl::LogSeverity::kFatal, loc);
 }
+/// Returns a LogStreamer that writes at level LogSeverity::kLogDebugFatal.
+///
+/// In debug mode, the program will be terminated when this `LogStreamer` is
+/// destroyed, regardless of whether any data were streamed in.
+/// @param loc The source location the message is attributed to.
+/// @return A LogStreamer configured to log at LogSeverity::kLogDebugFatal.
 inline LogStreamer LogDebugFatalStreamer(
     absl::SourceLocation loc = absl::SourceLocation::current()) {
   return absl::LogStreamer(absl::kLogDebugFatal, loc);

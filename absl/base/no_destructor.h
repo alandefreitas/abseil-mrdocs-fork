@@ -45,74 +45,72 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
-// absl::NoDestructor<T>
-//
-// NoDestructor<T> is a wrapper around an object of type T that behaves as an
-// object of type T but never calls T's destructor. NoDestructor<T> makes it
-// safer and/or more efficient to use such objects in static storage contexts,
-// ideally as function scope static variables.
-//
-// An instance of absl::NoDestructor<T> has similar type semantics to an
-// instance of T:
-//
-// * Constructs in the same manner as an object of type T through perfect
-//   forwarding.
-// * Provides pointer/reference semantic access to the object of type T via
-//   `->`, `*`, and `get()`.
-//   (Note that `const NoDestructor<T>` works like a pointer to const `T`.)
-//
-// Additionally, NoDestructor<T> provides the following benefits:
-//
-// * Never calls T's destructor for the object
-// * If the object is a function-local static variable, the type can be
-//   lazily constructed.
-//
-// An object of type NoDestructor<T> is "trivially destructible" in the notion
-// that its destructor is never run.
-//
-// Usage as Function Scope Static Variables
-//
-// Function static objects will be lazily initialized within static storage:
-//
-//    // Function scope.
-//    const std::string& MyString() {
-//      static const absl::NoDestructor<std::string> x("foo");
-//      return *x;
-//    }
-//
-// For function static variables, NoDestructor avoids heap allocation and can be
-// inlined in static storage, resulting in exactly-once, thread-safe
-// construction of an object, and very fast access thereafter (the cost is a few
-// extra cycles).
-//
-// Using NoDestructor<T> in this manner is generally better than other patterns
-// which require pointer chasing:
-//
-//   // Prefer using absl::NoDestructor<T> instead for the static variable.
-//   const std::string& MyString() {
-//     static const std::string* x = new std::string("foo");
-//     return *x;
-//   }
-//
-// Usage as Global Static Variables
-//
-// NoDestructor<T> allows declaration of a global object of type T that has a
-// non-trivial destructor since its destructor is never run. However, such
-// objects still need to worry about initialization order, so such use is not
-// recommended, strongly discouraged by the Google C++ Style Guide, and outright
-// banned in Chromium.
-// See https://google.github.io/styleguide/cppguide.html#Static_and_Global_Variables
-//
-//    // Global or namespace scope.
-//    absl::NoDestructor<MyRegistry> reg{"foo", "bar", 8008};
-//
-// Note that if your object already has a trivial destructor, you don't need to
-// use NoDestructor<T>.
-//
+/// NoDestructor<T> is a wrapper around an object of type T that behaves as an
+/// object of type T but never calls T's destructor. NoDestructor<T> makes it
+/// safer and/or more efficient to use such objects in static storage contexts,
+/// ideally as function scope static variables.
+///
+/// An instance of absl::NoDestructor<T> has similar type semantics to an
+/// instance of T:
+///
+/// * Constructs in the same manner as an object of type T through perfect
+///   forwarding.
+/// * Provides pointer/reference semantic access to the object of type T via
+///   `->`, `*`, and `get()`.
+///   (Note that `const NoDestructor<T>` works like a pointer to const `T`.)
+///
+/// Additionally, NoDestructor<T> provides the following benefits:
+///
+/// * Never calls T's destructor for the object
+/// * If the object is a function-local static variable, the type can be
+///   lazily constructed.
+///
+/// An object of type NoDestructor<T> is "trivially destructible" in the notion
+/// that its destructor is never run.
+///
+/// Usage as Function Scope Static Variables
+///
+/// Function static objects will be lazily initialized within static storage:
+///
+///    // Function scope.
+///    const std::string& MyString() {
+///      static const absl::NoDestructor<std::string> x("foo");
+///      return *x;
+///    }
+///
+/// For function static variables, NoDestructor avoids heap allocation and can be
+/// inlined in static storage, resulting in exactly-once, thread-safe
+/// construction of an object, and very fast access thereafter (the cost is a few
+/// extra cycles).
+///
+/// Using NoDestructor<T> in this manner is generally better than other patterns
+/// which require pointer chasing:
+///
+///   // Prefer using absl::NoDestructor<T> instead for the static variable.
+///   const std::string& MyString() {
+///     static const std::string* x = new std::string("foo");
+///     return *x;
+///   }
+///
+/// Usage as Global Static Variables
+///
+/// NoDestructor<T> allows declaration of a global object of type T that has a
+/// non-trivial destructor since its destructor is never run. However, such
+/// objects still need to worry about initialization order, so such use is not
+/// recommended, strongly discouraged by the Google C++ Style Guide, and outright
+/// banned in Chromium.
+/// See https://google.github.io/styleguide/cppguide.html#Static_and_Global_Variables
+///
+///    // Global or namespace scope.
+///    absl::NoDestructor<MyRegistry> reg{"foo", "bar", 8008};
+///
+/// Note that if your object already has a trivial destructor, you don't need to
+/// use NoDestructor<T>.
 template <typename T>
 class NoDestructor {
  public:
-  // Forwards arguments to the T's constructor: calls T(args...).
+  /// Forwards arguments to the T's constructor: calls T(args...).
+  /// @param args The arguments forwarded to `T`'s constructor.
   template <typename... Ts,
             // Disable this overload when it might collide with copy/move.
             std::enable_if_t<!std::is_same_v<void(std::decay_t<Ts>&...),
@@ -121,24 +119,45 @@ class NoDestructor {
   explicit constexpr NoDestructor(Ts&&... args)
       : impl_(std::forward<Ts>(args)...) {}
 
-  // Forwards copy and move construction for T. Enables usage like this:
-  //   static NoDestructor<std::array<string, 3>> x{{{"1", "2", "3"}}};
-  //   static NoDestructor<std::vector<int>> x{{1, 2, 3}};
+  /// Forwards copy construction for T. Enables usage like this:
+  ///   static NoDestructor<std::array<string, 3>> x{{{"1", "2", "3"}}};
+  ///   static NoDestructor<std::vector<int>> x{{1, 2, 3}};
+  /// @param x The value to copy-construct the wrapped `T` from.
   explicit constexpr NoDestructor(const T& x) : impl_(x) {}
+  /// Forwards move construction for T.
+  /// @param x The value to move-construct the wrapped `T` from.
   explicit constexpr NoDestructor(T&& x)
       : impl_(std::move(x)) {}
 
-  // No copying.
-  NoDestructor(const NoDestructor&) = delete;
-  NoDestructor& operator=(const NoDestructor&) = delete;
+  /// Deleted: `NoDestructor` is not copyable.
+  NoDestructor(const NoDestructor& other) = delete;
+  /// Deleted: `NoDestructor` is not copy-assignable.
+  /// @return Not applicable; this overload is deleted.
+  NoDestructor& operator=(const NoDestructor& other) = delete;
 
-  // Pretend to be a smart pointer to T with deep constness.
-  // Never returns a null pointer.
+  /// Pretend to be a smart pointer to T with deep constness.
+  /// Never returns a null pointer.
+  /// @return A reference to the wrapped `T`.
   T& operator*() { return *get(); }
+  /// Pretend to be a smart pointer to T with deep constness.
+  /// Never returns a null pointer.
+  /// @return A pointer to the wrapped `T`.
   T* absl_nonnull operator->() { return get(); }
+  /// Pretend to be a smart pointer to T with deep constness.
+  /// Never returns a null pointer.
+  /// @return A pointer to the wrapped `T`.
   T* absl_nonnull get() { return impl_.get(); }
+  /// Pretend to be a smart pointer to const T with deep constness.
+  /// Never returns a null pointer.
+  /// @return A const reference to the wrapped `T`.
   const T& operator*() const { return *get(); }
+  /// Pretend to be a smart pointer to const T with deep constness.
+  /// Never returns a null pointer.
+  /// @return A const pointer to the wrapped `T`.
   const T* absl_nonnull operator->() const { return get(); }
+  /// Pretend to be a smart pointer to const T with deep constness.
+  /// Never returns a null pointer.
+  /// @return A const pointer to the wrapped `T`.
   const T* absl_nonnull get() const { return impl_.get(); }
 
  private:
@@ -180,8 +199,8 @@ class NoDestructor {
       impl_;
 };
 
-// Provide 'Class Template Argument Deduction': the type of NoDestructor's T
-// will be the same type as the argument passed to NoDestructor's constructor.
+/// Provide 'Class Template Argument Deduction': the type of NoDestructor's T
+/// will be the same type as the argument passed to NoDestructor's constructor.
 template <typename T>
 NoDestructor(T) -> NoDestructor<T>;
 

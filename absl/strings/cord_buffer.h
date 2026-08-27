@@ -43,250 +43,272 @@
 namespace absl {
 ABSL_NAMESPACE_BEGIN
 
+/// A sequence of characters stored as a tree of buffers.
 class Cord;
+/// Test-only accessor for `CordBuffer` internals.
 class CordBufferTestPeer;
 
-// CordBuffer
-//
-// CordBuffer manages memory buffers for purposes such as zero-copy APIs as well
-// as applications building cords with large data requiring granular control
-// over the allocation and size of cord data. For example, a function creating
-// a cord of random data could use a CordBuffer as follows:
-//
-//   absl::Cord CreateRandomCord(size_t length) {
-//     absl::Cord cord;
-//     while (length > 0) {
-//       CordBuffer buffer = CordBuffer::CreateWithDefaultLimit(length);
-//       absl::Span<char> data = buffer.available_up_to(length);
-//       FillRandomValues(data.data(), data.size());
-//       buffer.IncreaseLengthBy(data.size());
-//       cord.Append(std::move(buffer));
-//       length -= data.size();
-//     }
-//     return cord;
-//   }
-//
-// CordBuffer instances are by default limited to a capacity of `kDefaultLimit`
-// bytes. `kDefaultLimit` is currently just under 4KiB, but this default may
-// change in the future and/or for specific architectures. The default limit is
-// aimed to provide a good trade-off between performance and memory overhead.
-// Smaller buffers typically incur more compute cost while larger buffers are
-// more CPU efficient but create significant memory overhead because of such
-// allocations being less granular. Using larger buffers may also increase the
-// risk of memory fragmentation.
-//
-// Applications create a buffer using one of the `CreateWithDefaultLimit()` or
-// `CreateWithCustomLimit()` methods. The returned instance will have a non-zero
-// capacity and a zero length. Applications use the `data()` method to set the
-// contents of the managed memory, and once done filling the buffer, use the
-// `IncreaseLengthBy()` or 'SetLength()' method to specify the length of the
-// initialized data before adding the buffer to a Cord.
-//
-// The `CreateWithCustomLimit()` method is intended for applications needing
-// larger buffers than the default memory limit, allowing the allocation of up
-// to a capacity of `kCustomLimit` bytes minus some minimum internal overhead.
-// The usage of `CreateWithCustomLimit()` should be limited to only those use
-// cases where the distribution of the input is relatively well known, and/or
-// where the trade-off between the efficiency gains outweigh the risk of memory
-// fragmentation. See the documentation for `CreateWithCustomLimit()` for more
-// information on using larger custom limits.
-//
-// The capacity of a `CordBuffer` returned by one of the `Create` methods may
-// be larger than the requested capacity due to rounding, alignment and
-// granularity of the memory allocator. Applications should use the `capacity`
-// method to obtain the effective capacity of the returned instance as
-// demonstrated in the provided example above.
-//
-// CordBuffer is a move-only class. All references into the managed memory are
-// invalidated when an instance is moved into either another CordBuffer instance
-// or a Cord. Writing to a location obtained by a previous call to `data()`
-// after an instance was moved will lead to undefined behavior.
-//
-// A `moved from` CordBuffer instance will have a valid, but empty state.
-// CordBuffer is thread compatible.
+/// Manages memory buffers for building cords.
+///
+/// CordBuffer manages memory buffers for purposes such as zero-copy APIs as well
+/// as applications building cords with large data requiring granular control
+/// over the allocation and size of cord data. For example, a function creating
+/// a cord of random data could use a CordBuffer as follows:
+///
+///   absl::Cord CreateRandomCord(size_t length) {
+///     absl::Cord cord;
+///     while (length > 0) {
+///       CordBuffer buffer = CordBuffer::CreateWithDefaultLimit(length);
+///       absl::Span<char> data = buffer.available_up_to(length);
+///       FillRandomValues(data.data(), data.size());
+///       buffer.IncreaseLengthBy(data.size());
+///       cord.Append(std::move(buffer));
+///       length -= data.size();
+///     }
+///     return cord;
+///   }
+///
+/// CordBuffer instances are by default limited to a capacity of `kDefaultLimit`
+/// bytes. `kDefaultLimit` is currently just under 4KiB, but this default may
+/// change in the future and/or for specific architectures. The default limit is
+/// aimed to provide a good trade-off between performance and memory overhead.
+/// Smaller buffers typically incur more compute cost while larger buffers are
+/// more CPU efficient but create significant memory overhead because of such
+/// allocations being less granular. Using larger buffers may also increase the
+/// risk of memory fragmentation.
+///
+/// Applications create a buffer using one of the `CreateWithDefaultLimit()` or
+/// `CreateWithCustomLimit()` methods. The returned instance will have a non-zero
+/// capacity and a zero length. Applications use the `data()` method to set the
+/// contents of the managed memory, and once done filling the buffer, use the
+/// `IncreaseLengthBy()` or 'SetLength()' method to specify the length of the
+/// initialized data before adding the buffer to a Cord.
+///
+/// The `CreateWithCustomLimit()` method is intended for applications needing
+/// larger buffers than the default memory limit, allowing the allocation of up
+/// to a capacity of `kCustomLimit` bytes minus some minimum internal overhead.
+/// The usage of `CreateWithCustomLimit()` should be limited to only those use
+/// cases where the distribution of the input is relatively well known, and/or
+/// where the trade-off between the efficiency gains outweigh the risk of memory
+/// fragmentation. See the documentation for `CreateWithCustomLimit()` for more
+/// information on using larger custom limits.
+///
+/// The capacity of a `CordBuffer` returned by one of the `Create` methods may
+/// be larger than the requested capacity due to rounding, alignment and
+/// granularity of the memory allocator. Applications should use the `capacity`
+/// method to obtain the effective capacity of the returned instance as
+/// demonstrated in the provided example above.
+///
+/// CordBuffer is a move-only class. All references into the managed memory are
+/// invalidated when an instance is moved into either another CordBuffer instance
+/// or a Cord. Writing to a location obtained by a previous call to `data()`
+/// after an instance was moved will lead to undefined behavior.
+///
+/// A `moved from` CordBuffer instance will have a valid, but empty state.
+/// CordBuffer is thread compatible.
 class CordBuffer {
  public:
-  // kDefaultLimit
-  //
-  // Default capacity limits of allocated CordBuffers.
-  // See the class comments for more information on allocation limits.
+  /// Default capacity limits of allocated CordBuffers.
+  ///
+  /// See the class comments for more information on allocation limits.
   static constexpr size_t kDefaultLimit = cord_internal::kMaxFlatLength;
 
-  // kCustomLimit
-  //
-  // Maximum size for CreateWithCustomLimit() allocated buffers.
-  // Note that the effective capacity may be slightly less
-  // because of internal overhead of internal cord buffers.
+  /// Maximum size for CreateWithCustomLimit() allocated buffers.
+  ///
+  /// Note that the effective capacity may be slightly less
+  /// because of internal overhead of internal cord buffers.
   static constexpr size_t kCustomLimit = 64U << 10;
 
   // Constructors, Destructors and Assignment Operators
 
-  // Creates an empty CordBuffer.
+  /// Creates an empty CordBuffer.
   CordBuffer() = default;
 
-  // Destroys this CordBuffer instance and, if not empty, releases any memory
-  // managed by this instance, invalidating previously returned references.
+  /// Destroys this CordBuffer instance and, if not empty, releases any memory
+  /// managed by this instance, invalidating previously returned references.
   ~CordBuffer();
 
-  // CordBuffer is move-only
+  /// Move constructor. CordBuffer is move-only.
+  ///
+  /// @param rhs The CordBuffer to move from.
   CordBuffer(CordBuffer&& rhs) noexcept;
+  /// Move assignment operator. CordBuffer is move-only.
+  ///
+  /// @param rhs The CordBuffer to move from.
+  /// @return A reference to this CordBuffer.
   CordBuffer& operator=(CordBuffer&&) noexcept;
-  CordBuffer(const CordBuffer&) = delete;
-  CordBuffer& operator=(const CordBuffer&) = delete;
+  /// Deleted copy constructor. CordBuffer is move-only.
+  CordBuffer(const CordBuffer& other) = delete;
+  /// Deleted copy assignment operator. CordBuffer is move-only.
+  ///
+  /// @return A reference to this CordBuffer.
+  CordBuffer& operator=(const CordBuffer& other) = delete;
 
-  // CordBuffer::MaximumPayload()
-  //
-  // Returns the guaranteed maximum payload for a CordBuffer returned by the
-  // `CreateWithDefaultLimit()` method. While small, each internal buffer inside
-  // a Cord incurs an overhead to manage the length, type and reference count
-  // for the buffer managed inside the cord tree. Applications can use this
-  // method to get approximate number of buffers required for a given byte
-  // size, etc.
-  //
-  // For example:
-  //   const size_t payload = absl::CordBuffer::MaximumPayload();
-  //   const size_t buffer_count = (total_size + payload - 1) / payload;
-  //   buffers.reserve(buffer_count);
+  /// Returns the guaranteed maximum payload for a CordBuffer returned by the
+  /// `CreateWithDefaultLimit()` method. While small, each internal buffer inside
+  /// a Cord incurs an overhead to manage the length, type and reference count
+  /// for the buffer managed inside the cord tree. Applications can use this
+  /// method to get approximate number of buffers required for a given byte
+  /// size, etc.
+  ///
+  /// For example:
+  ///   const size_t payload = absl::CordBuffer::MaximumPayload();
+  ///   const size_t buffer_count = (total_size + payload - 1) / payload;
+  ///   buffers.reserve(buffer_count);
+  ///
+  /// @return The maximum payload for a default-limit CordBuffer.
   static constexpr size_t MaximumPayload();
 
-  // Overload to the above `MaximumPayload()` except that it returns the
-  // maximum payload for a CordBuffer returned by the `CreateWithCustomLimit()`
-  // method given the provided `block_size`.
+  /// Overload to the above `MaximumPayload()` except that it returns the
+  /// maximum payload for a CordBuffer returned by the `CreateWithCustomLimit()`
+  /// method given the provided `block_size`.
+  ///
+  /// @param block_size The block size of the custom-limit CordBuffer.
+  /// @return The maximum payload for the given block size.
   static constexpr size_t MaximumPayload(size_t block_size);
 
-  // CordBuffer::CreateWithDefaultLimit()
-  //
-  // Creates a CordBuffer instance of the desired `capacity`, capped at the
-  // default limit `kDefaultLimit`. The returned buffer has a guaranteed
-  // capacity of at least `min(kDefaultLimit, capacity)`. See the class comments
-  // for more information on buffer capacities and intended usage.
+  /// Creates a CordBuffer instance of the desired `capacity`, capped at the
+  /// default limit `kDefaultLimit`. The returned buffer has a guaranteed
+  /// capacity of at least `min(kDefaultLimit, capacity)`. See the class comments
+  /// for more information on buffer capacities and intended usage.
+  ///
+  /// @param capacity The desired capacity, capped at `kDefaultLimit`.
+  /// @return A new CordBuffer with the requested capacity.
   static CordBuffer CreateWithDefaultLimit(size_t capacity);
 
-  // CordBuffer::CreateWithCustomLimit()
-  //
-  // Creates a CordBuffer instance of the desired `capacity` rounded to an
-  // appropriate power of 2 size less than, or equal to `block_size`.
-  // Requires `block_size` to be a power of 2.
-  //
-  // If `capacity` is less than or equal to `kDefaultLimit`, then this method
-  // behaves identical to `CreateWithDefaultLimit`, which means that the caller
-  // is guaranteed to get a buffer of at least the requested capacity.
-  //
-  // If `capacity` is greater than or equal to `block_size`, then this method
-  // returns a buffer with an `allocated size` of `block_size` bytes. Otherwise,
-  // this methods returns a buffer with a suitable smaller power of 2 block size
-  // to satisfy the request. The actual size depends on a number of factors, and
-  // is typically (but not necessarily) the highest or second highest power of 2
-  // value less than or equal to `capacity`.
-  //
-  // The 'allocated size' includes a small amount of overhead required for
-  // internal state, which is currently 13 bytes on 64-bit platforms. For
-  // example: a buffer created with `block_size` and `capacity' set to 8KiB
-  // will have an allocated size of 8KiB, and an effective internal `capacity`
-  // of 8KiB - 13 = 8179 bytes.
-  //
-  // To demonstrate this in practice, let's assume we want to read data from
-  // somewhat larger files using approximately 64KiB buffers:
-  //
-  //   absl::Cord ReadFromFile(int fd, size_t n) {
-  //     absl::Cord cord;
-  //     while (n > 0) {
-  //       CordBuffer buffer = CordBuffer::CreateWithCustomLimit(64 << 10, n);
-  //       absl::Span<char> data = buffer.available_up_to(n);
-  //       ReadFileDataOrDie(fd, data.data(), data.size());
-  //       buffer.IncreaseLengthBy(data.size());
-  //       cord.Append(std::move(buffer));
-  //       n -= data.size();
-  //     }
-  //     return cord;
-  //   }
-  //
-  // If we'd use this function to read a file of 659KiB, we may get the
-  // following pattern of allocated cord buffer sizes:
-  //
-  //   CreateWithCustomLimit(64KiB, 674816) --> ~64KiB (65523)
-  //   CreateWithCustomLimit(64KiB, 674816) --> ~64KiB (65523)
-  //   ...
-  //   CreateWithCustomLimit(64KiB,  19586) --> ~16KiB (16371)
-  //   CreateWithCustomLimit(64KiB,   3215) -->   3215 (at least 3215)
-  //
-  // The reason the method returns a 16K buffer instead of a roughly 19K buffer
-  // is to reduce memory overhead and fragmentation risks. Using carefully
-  // chosen power of 2 values reduces the entropy of allocated memory sizes.
-  //
-  // Additionally, let's assume we'd use the above function on files that are
-  // generally smaller than 64K. If we'd use 'precise' sized buffers for such
-  // files, than we'd get a very wide distribution of allocated memory sizes
-  // rounded to 4K page sizes, and we'd end up with a lot of unused capacity.
-  //
-  // In general, application should only use custom sizes if the data they are
-  // consuming or storing is expected to be many times the chosen block size,
-  // and be based on objective data and performance metrics. For example, a
-  // compress function may work faster and consume less CPU when using larger
-  // buffers. Such an application should pick a size offering a reasonable
-  // trade-off between expected data size, compute savings with larger buffers,
-  // and the cost or fragmentation effect of larger buffers.
-  // Applications must pick a reasonable spot on that curve, and make sure their
-  // data meets their expectations in size distributions such as "mostly large".
+  /// Creates a CordBuffer instance of the desired `capacity` rounded to an
+  /// appropriate power of 2 size less than, or equal to `block_size`.
+  /// Requires `block_size` to be a power of 2.
+  ///
+  /// If `capacity` is less than or equal to `kDefaultLimit`, then this method
+  /// behaves identical to `CreateWithDefaultLimit`, which means that the caller
+  /// is guaranteed to get a buffer of at least the requested capacity.
+  ///
+  /// If `capacity` is greater than or equal to `block_size`, then this method
+  /// returns a buffer with an `allocated size` of `block_size` bytes. Otherwise,
+  /// this methods returns a buffer with a suitable smaller power of 2 block size
+  /// to satisfy the request. The actual size depends on a number of factors, and
+  /// is typically (but not necessarily) the highest or second highest power of 2
+  /// value less than or equal to `capacity`.
+  ///
+  /// The 'allocated size' includes a small amount of overhead required for
+  /// internal state, which is currently 13 bytes on 64-bit platforms. For
+  /// example: a buffer created with `block_size` and `capacity' set to 8KiB
+  /// will have an allocated size of 8KiB, and an effective internal `capacity`
+  /// of 8KiB - 13 = 8179 bytes.
+  ///
+  /// To demonstrate this in practice, let's assume we want to read data from
+  /// somewhat larger files using approximately 64KiB buffers:
+  ///
+  ///   absl::Cord ReadFromFile(int fd, size_t n) {
+  ///     absl::Cord cord;
+  ///     while (n > 0) {
+  ///       CordBuffer buffer = CordBuffer::CreateWithCustomLimit(64 << 10, n);
+  ///       absl::Span<char> data = buffer.available_up_to(n);
+  ///       ReadFileDataOrDie(fd, data.data(), data.size());
+  ///       buffer.IncreaseLengthBy(data.size());
+  ///       cord.Append(std::move(buffer));
+  ///       n -= data.size();
+  ///     }
+  ///     return cord;
+  ///   }
+  ///
+  /// If we'd use this function to read a file of 659KiB, we may get the
+  /// following pattern of allocated cord buffer sizes:
+  ///
+  ///   CreateWithCustomLimit(64KiB, 674816) --> ~64KiB (65523)
+  ///   CreateWithCustomLimit(64KiB, 674816) --> ~64KiB (65523)
+  ///   ...
+  ///   CreateWithCustomLimit(64KiB,  19586) --> ~16KiB (16371)
+  ///   CreateWithCustomLimit(64KiB,   3215) -->   3215 (at least 3215)
+  ///
+  /// The reason the method returns a 16K buffer instead of a roughly 19K buffer
+  /// is to reduce memory overhead and fragmentation risks. Using carefully
+  /// chosen power of 2 values reduces the entropy of allocated memory sizes.
+  ///
+  /// Additionally, let's assume we'd use the above function on files that are
+  /// generally smaller than 64K. If we'd use 'precise' sized buffers for such
+  /// files, than we'd get a very wide distribution of allocated memory sizes
+  /// rounded to 4K page sizes, and we'd end up with a lot of unused capacity.
+  ///
+  /// In general, application should only use custom sizes if the data they are
+  /// consuming or storing is expected to be many times the chosen block size,
+  /// and be based on objective data and performance metrics. For example, a
+  /// compress function may work faster and consume less CPU when using larger
+  /// buffers. Such an application should pick a size offering a reasonable
+  /// trade-off between expected data size, compute savings with larger buffers,
+  /// and the cost or fragmentation effect of larger buffers.
+  /// Applications must pick a reasonable spot on that curve, and make sure their
+  /// data meets their expectations in size distributions such as "mostly large".
+  ///
+  /// @param block_size The power-of-2 upper bound on the allocated size.
+  /// @param capacity The desired capacity of the buffer.
+  /// @return A new CordBuffer sized according to `block_size` and `capacity`.
   static CordBuffer CreateWithCustomLimit(size_t block_size, size_t capacity);
 
-  // CordBuffer::available()
-  //
-  // Returns the span delineating the available capacity in this buffer
-  // which is defined as `{ data() + length(), capacity() - length() }`.
+  /// Returns the span delineating the available capacity in this buffer
+  /// which is defined as `{ data() + length(), capacity() - length() }`.
+  ///
+  /// @return The span of available capacity.
   absl::Span<char> available();
 
-  // CordBuffer::available_up_to()
-  //
-  // Returns the span delineating the available capacity in this buffer limited
-  // to `size` bytes. This is equivalent to `available().subspan(0, size)`.
+  /// Returns the span delineating the available capacity in this buffer limited
+  /// to `size` bytes. This is equivalent to `available().subspan(0, size)`.
+  ///
+  /// @param size The maximum size of the returned span.
+  /// @return The span of available capacity, limited to `size` bytes.
   absl::Span<char> available_up_to(size_t size);
 
-  // CordBuffer::data()
-  //
-  // Returns a non-null reference to the data managed by this instance.
-  // Applications are allowed to write up to `capacity` bytes of instance data.
-  // CordBuffer data is uninitialized by default. Reading data from an instance
-  // that has not yet been initialized will lead to undefined behavior.
+  /// Returns a non-null reference to the data managed by this instance.
+  ///
+  /// Applications are allowed to write up to `capacity` bytes of instance data.
+  /// CordBuffer data is uninitialized by default. Reading data from an instance
+  /// that has not yet been initialized will lead to undefined behavior.
+  ///
+  /// @return A pointer to the managed data.
   char* data();
+  /// Returns a non-null const reference to the data managed by this instance.
+  ///
+  /// @return A const pointer to the managed data.
   const char* data() const;
 
-  // CordBuffer::length()
-  //
-  // Returns the length of this instance. The default length of a CordBuffer is
-  // 0, indicating an 'empty' CordBuffer. Applications must specify the length
-  // of the data in a CordBuffer before adding it to a Cord.
+  /// Returns the length of this instance. The default length of a CordBuffer is
+  /// 0, indicating an 'empty' CordBuffer. Applications must specify the length
+  /// of the data in a CordBuffer before adding it to a Cord.
+  ///
+  /// @return The length of the initialized data.
   size_t length() const;
 
-  // CordBuffer::capacity()
-  //
-  // Returns the capacity of this instance. All instances have a non-zero
-  // capacity: default and `moved from` instances have a small internal buffer.
+  /// Returns the capacity of this instance. All instances have a non-zero
+  /// capacity: default and `moved from` instances have a small internal buffer.
+  ///
+  /// @return The capacity of this buffer.
   size_t capacity() const;
 
-  // CordBuffer::IncreaseLengthBy()
-  //
-  // Increases the length of this buffer by the specified 'n' bytes.
-  // Applications must make sure all data in this buffer up to the new length
-  // has been initialized before adding a CordBuffer to a Cord: failure to do so
-  // will lead to undefined behavior.  Requires `length() + n <= capacity()`.
-  // Typically, applications will use 'available_up_to()` to get a span of the
-  // desired capacity, and use `span.size()` to increase the length as in:
-  //   absl::Span<char> span = buffer.available_up_to(desired);
-  //   buffer.IncreaseLengthBy(span.size());
-  //   memcpy(span.data(), src, span.size());
-  //   etc...
+  /// Increases the length of this buffer by the specified 'n' bytes.
+  ///
+  /// Applications must make sure all data in this buffer up to the new length
+  /// has been initialized before adding a CordBuffer to a Cord: failure to do so
+  /// will lead to undefined behavior.  Requires `length() + n <= capacity()`.
+  /// Typically, applications will use 'available_up_to()` to get a span of the
+  /// desired capacity, and use `span.size()` to increase the length as in:
+  ///   absl::Span<char> span = buffer.available_up_to(desired);
+  ///   buffer.IncreaseLengthBy(span.size());
+  ///   memcpy(span.data(), src, span.size());
+  ///   etc...
+  ///
+  /// @param n The number of bytes to add to the current length.
   void IncreaseLengthBy(size_t n);
 
-  // CordBuffer::SetLength()
-  //
-  // Sets the data length of this instance. Applications must make sure all data
-  // of the specified length has been initialized before adding a CordBuffer to
-  // a Cord: failure to do so will lead to undefined behavior.
-  // Setting the length to a small value or zero does not release any memory
-  // held by this CordBuffer instance. Requires `length <= capacity()`.
-  // Applications should preferably use the `IncreaseLengthBy()` method above
-  // in combination with the 'available()` or `available_up_to()` methods.
+  /// Sets the data length of this instance. Applications must make sure all data
+  /// of the specified length has been initialized before adding a CordBuffer to
+  /// a Cord: failure to do so will lead to undefined behavior.
+  /// Setting the length to a small value or zero does not release any memory
+  /// held by this CordBuffer instance. Requires `length <= capacity()`.
+  /// Applications should preferably use the `IncreaseLengthBy()` method above
+  /// in combination with the 'available()` or `available_up_to()` methods.
+  ///
+  /// @param length The new length of the initialized data.
   void SetLength(size_t length);
 
  private:
